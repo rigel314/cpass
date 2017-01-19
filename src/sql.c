@@ -314,7 +314,6 @@ int findKid(char** ctJSON, const char* uuid)
 		return 1;
 	}
 	
-	// TODO: implement second search
 	// Failed, so check elsewhere
 	// if !(uuid ends with "-sym")
 	// SELECT enc_pri_key FROM keysets WHERE uuid = 'uuid' LIMIT 1;
