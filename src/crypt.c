@@ -78,10 +78,7 @@ int hkdf(char* okm, int olen, char* salt, int slen, char* key, int klen, char* i
 	int TprimeLen = 0;
 	int offset=0, cpyLen=0;
 	
-//	decdump("hkdf: HMAC ikm: \n", key, klen);
-//	decdump("hkdf: HMAC salt: \n", salt, slen);
 	HMAC(EVP_sha256(), salt, slen, key, klen, prk, NULL);
-//	decdump("hkdf: HMAC output:\n", prk, SHA256_DIGEST_LENGTH);
 	
 	for(int i = 0; i < steps; i++)
 	{

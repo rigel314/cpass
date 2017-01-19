@@ -65,9 +65,9 @@ void printUUIDs(struct keys** keylist)
 	{
 		dbgLog("%d, %s\n", ptr->type, ptr->kid);
 		if(ptr->type == KT_aes)
-					hexdump("", ptr->aes, 32);
+			hexdump("", ptr->aes, 32);
 		if(ptr->type == KT_rsa)
-					hexdump("", ptr->rsaJSON, strlen(ptr->rsaJSON));
+			hexdump("", ptr->rsaJSON, strlen(ptr->rsaJSON));
 	}
 }
 
