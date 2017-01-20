@@ -155,6 +155,16 @@ int openDB(char* file)
 
 int getMUKsalt(char** p2s, char** alg, int* p2c)
 {
+//	#define TESTS
+	#ifdef TESTS
+		*alg = malloc(100);
+		*p2s = malloc(100);
+		*p2c = 100000;
+		strcpy(*alg, "PBES2g-HS256");
+		strcpy(*p2s, "1234567890123456789012");
+		return 1;
+	#endif
+	
 	// SELECT enc_sym_key FROM keysets WHERE encrypted_by = mp ORDER BY updated_at DESC LIMIT 1
 	
 	int retval;

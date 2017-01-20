@@ -72,6 +72,7 @@ int main()
 	ret += testHkdf();
 	ret += testBase64();
 	ret += testStrnrcmp();
+	ret += testMasterKey();
 	printf("%d tests failed\n", ret);
 	return ret;
 }

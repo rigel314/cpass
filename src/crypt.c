@@ -23,8 +23,6 @@
 #define ACCOUNTKEYverLen 2
 #define MUKkeyLen 32
 
-// TODO: move masterKey to 1pass.c
-
 /**
  * returns master unlock key in km
  * takes:
@@ -32,7 +30,6 @@
  *	account key as ka, ACCOUNTKEYlen(26) bytes long
  *	email address as e, null terminated
  *	ID as I, IDlen(6) bytes long
- *	salt as s, base64url encoded, null terminated
  */
 int masterKey(char* km, char* p, char* ka, char* e, char* I)
 {
@@ -217,5 +214,31 @@ int testHkdf()
 	ret += testMemcmp("tv3", tv3ans, hkdftestOut, 42);
 	
 	return ret;
+}
+
+int testMasterKey()
+{
+	int ret = 0;
+	
+	printf("Master Unlock Key tests:\n");
+	
+	char km[MUKkeyLen];
+	char pass[] = "blar aoeu";
+	char accKey[] = "A3ABCDEF12345678901234567890123456";
+	char ka[ACCOUNTKEYlen];
+	char email[] = "aoeu@example.com";
+	char id[IDlen];
+	char truthMUK[MUKkeyLen] = {0x3f, 0xd4, 0xea, 0x15, 0x5e, 0xde, 0x5d, 0x96, 0x8c, 0x5d, 0x8d, 0xb2, 0xf0, 0x8a, 0x8b, 0xba, 0x7e, 0x65, 0xc1, 0xd1, 0x42, 0x6a, 0xf3, 0x6a, 0xe7, 0xc7, 0xdb, 0x8b, 0xfc, 0x7e, 0x5f, 0xaa};
+	memcpy(ka, accKey+8, ACCOUNTKEYlen);
+	memcpy(id, accKey+2, IDlen);
+	
+	masterKey(km, pass, ka, email, id);
+//	for(int i = 0; i < MUKkeyLen; i++)
+//	{
+//		printf("%#02x, ", (unsigned char) km[i]);
+//	}
+//	printf("\n");
+	
+	ret += testMemcmp("masterKey test", km, truthMUK, MUKkeyLen);
 }
 #endif

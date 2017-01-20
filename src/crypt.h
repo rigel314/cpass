@@ -15,6 +15,7 @@ int rsaoaepdec(char* pt, int* ptlen, char* ct, int ctlen, char* key);
 
 #ifdef TESTS
 int testHkdf();
+int testMasterKey();
 #endif
 
 #endif /* SRC_CRYPT_H_ */
