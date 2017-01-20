@@ -29,7 +29,7 @@ int countItems(char* file)
 	retval = sqlite3_open_v2(file, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_open() error: %d", retval);
+		dbgLog("sqlite3_open() error: %d\n", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -39,7 +39,7 @@ int countItems(char* file)
 	retval = sqlite3_prepare_v2(handle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -51,7 +51,7 @@ int countItems(char* file)
 	}
 	if(retval != SQLITE_DONE)
 	{
-		dbgLog("sqlite3_step() error: %d", retval);
+		dbgLog("sqlite3_step() error: %d\n", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -59,7 +59,7 @@ int countItems(char* file)
 	retval = sqlite3_finalize(query);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_finalize() error: %d", retval);
+		dbgLog("sqlite3_finalize() error: %d\n", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -79,7 +79,7 @@ int printItemJSON(char* file, char* symkey)
 	retval = sqlite3_open_v2(file, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_open() error: %d", retval);
+		dbgLog("sqlite3_open() error: %d\n", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -89,7 +89,7 @@ int printItemJSON(char* file, char* symkey)
 	retval = sqlite3_prepare_v2(handle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -118,7 +118,7 @@ int printItemJSON(char* file, char* symkey)
 	}
 	if(retval != SQLITE_DONE)
 	{
-		dbgLog("sqlite3_step() error: %d", retval);
+		dbgLog("sqlite3_step() error: %d\n", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -126,7 +126,7 @@ int printItemJSON(char* file, char* symkey)
 	retval = sqlite3_finalize(query);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_finalize() error: %d", retval);
+		dbgLog("sqlite3_finalize() error: %d\n", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -143,7 +143,7 @@ int openDB(char* file)
 	retval = sqlite3_open_v2(file, &dbHandle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_open() error: %d", retval);
+		dbgLog("sqlite3_open() error: %d\n", retval);
 		sqlite3_close(dbHandle);
 		dbHandle = NULL;
 		return -1;
@@ -178,21 +178,21 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 		return 0;
 	}
 
 	retval = sqlite3_bind_text(query, 1, "mp", -1, SQLITE_STATIC);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 		return 0;
 	}
 
 	retval = sqlite3_step(query);
 	if(retval != SQLITE_ROW)
 	{
-		dbgLog("sqlite3_step() error: %d", retval);
+		dbgLog("sqlite3_step() error: %d\n", retval);
 		return 0;
 	}
 
@@ -220,7 +220,7 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	retval = sqlite3_finalize(query);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_finalize() error: %d", retval);
+		dbgLog("sqlite3_finalize() error: %d\n", retval);
 		free(*alg);
 		free(*p2s);
 		return 0;
@@ -247,7 +247,7 @@ int findKid(char** ctJSON, const char* uuid)
 	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 		return 0;
 	}
 	
@@ -272,14 +272,14 @@ int findKid(char** ctJSON, const char* uuid)
 	
 	if(retval != SQLITE_DONE && retval != SQLITE_ROW)
 	{
-		dbgLog("sqlite3_step() error: %d", retval);
+		dbgLog("sqlite3_step() error: %d\n", retval);
 		return 0;
 	}
 
 	retval = sqlite3_finalize(query);
 	if(retval != SQLITE_OK)
 	{
-		dbgLog("sqlite3_finalize() error: %d", retval);
+		dbgLog("sqlite3_finalize() error: %d\n", retval);
 		return 0;
 	}
 	
@@ -289,20 +289,20 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 			return 0;
 		}
 		
 		retval = sqlite3_bind_int(query, 1, vid);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
-			dbgLog("sqlite3_step() error: %d", retval);
+			dbgLog("sqlite3_step() error: %d\n", retval);
 			return 0;
 		}
 		
@@ -315,7 +315,7 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_finalize(query);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_finalize() error: %d", retval);
+			dbgLog("sqlite3_finalize() error: %d\n", retval);
 			free(*ctJSON);
 			return 0;
 		}
@@ -338,20 +338,20 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 			return 0;
 		}
 		
 		retval = sqlite3_bind_text(query, 1, uuid, -1, SQLITE_STATIC);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
-			dbgLog("sqlite3_step() error: %d\n", retval);
+			dbgLog("sqlite3_step() error: %d\n\n", retval);
 			return 0;
 		}
 		
@@ -375,7 +375,7 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_finalize(query);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_finalize() error: %d", retval);
+			dbgLog("sqlite3_finalize() error: %d\n", retval);
 			free(*ctJSON);
 			return 0;
 		}
@@ -389,20 +389,20 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 			return 0;
 		}
 		
 		retval = sqlite3_bind_text(query, 1, tmpUuid, -1, SQLITE_STATIC);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
-			dbgLog("sqlite3_step() error: %d", retval);
+			dbgLog("sqlite3_step() error: %d\n", retval);
 			return 0;
 		}
 		
@@ -415,7 +415,7 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_finalize(query);
 		if(retval != SQLITE_OK)
 		{
-			dbgLog("sqlite3_finalize() error: %d", retval);
+			dbgLog("sqlite3_finalize() error: %d\n", retval);
 			free(*ctJSON);
 			return 0;
 		}
