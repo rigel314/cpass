@@ -29,7 +29,7 @@ int countItems(char* file)
 	retval = sqlite3_open_v2(file, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: countItems: sqlite3_open() error: %d", retval);
+		dbgLog("sqlite3_open() error: %d", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -39,7 +39,7 @@ int countItems(char* file)
 	retval = sqlite3_prepare_v2(handle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: countItems: sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -51,7 +51,7 @@ int countItems(char* file)
 	}
 	if(retval != SQLITE_DONE)
 	{
-		printf("sql: countItems: sqlite3_step() error: %d", retval);
+		dbgLog("sqlite3_step() error: %d", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -59,7 +59,7 @@ int countItems(char* file)
 	retval = sqlite3_finalize(query);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: countItems: sqlite3_finalize() error: %d", retval);
+		dbgLog("sqlite3_finalize() error: %d", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -79,7 +79,7 @@ int printItemJSON(char* file, char* symkey)
 	retval = sqlite3_open_v2(file, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: printItemJSON: sqlite3_open() error: %d", retval);
+		dbgLog("sqlite3_open() error: %d", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -89,7 +89,7 @@ int printItemJSON(char* file, char* symkey)
 	retval = sqlite3_prepare_v2(handle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: printItemJSON: sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -118,7 +118,7 @@ int printItemJSON(char* file, char* symkey)
 	}
 	if(retval != SQLITE_DONE)
 	{
-		printf("sql: printItemJSON: sqlite3_step() error: %d", retval);
+		dbgLog("sqlite3_step() error: %d", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -126,7 +126,7 @@ int printItemJSON(char* file, char* symkey)
 	retval = sqlite3_finalize(query);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: printItemJSON: sqlite3_finalize() error: %d", retval);
+		dbgLog("sqlite3_finalize() error: %d", retval);
 		sqlite3_close(handle);
 		return -1;
 	}
@@ -143,7 +143,7 @@ int openDB(char* file)
 	retval = sqlite3_open_v2(file, &dbHandle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: openDB: sqlite3_open() error: %d", retval);
+		dbgLog("sqlite3_open() error: %d", retval);
 		sqlite3_close(dbHandle);
 		dbHandle = NULL;
 		return -1;
@@ -152,7 +152,6 @@ int openDB(char* file)
 }
 
 // TODO: finalize before return
-// TODO: change printf to dbgLog
 
 int getMUKsalt(char** p2s, char** alg, int* p2c)
 {
@@ -169,21 +168,21 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: getMUKsalt: sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d", retval);
 		return 0;
 	}
 
 	retval = sqlite3_bind_text(query, 1, "mp", -1, SQLITE_STATIC);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: getMUKsalt: sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d", retval);
 		return 0;
 	}
 
 	retval = sqlite3_step(query);
 	if(retval != SQLITE_ROW)
 	{
-		printf("sql: getMUKsalt: sqlite3_step() error: %d", retval);
+		dbgLog("sqlite3_step() error: %d", retval);
 		return 0;
 	}
 
@@ -211,7 +210,7 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	retval = sqlite3_finalize(query);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: getMUKsalt: sqlite3_finalize() error: %d", retval);
+		dbgLog("sqlite3_finalize() error: %d", retval);
 		free(*alg);
 		free(*p2s);
 		return 0;
@@ -238,7 +237,7 @@ int findKid(char** ctJSON, const char* uuid)
 	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: findKid: sqlite3_prepare_v2() error: %d", retval);
+		dbgLog("sqlite3_prepare_v2() error: %d", retval);
 		return 0;
 	}
 	
@@ -250,7 +249,6 @@ int findKid(char** ctJSON, const char* uuid)
 		struct json_object* jobj = json_tokener_parse(enc);
 		struct json_object* kid;
 		json_object_object_get_ex(jobj, "kid", &kid);
-//		printf("sql.c:206: %s\nsql.c:206: %s\n\n", uuid, json_object_get_string(kid));
 		
 		if(!strcmp(uuid, json_object_get_string(kid)))
 		{
@@ -264,14 +262,14 @@ int findKid(char** ctJSON, const char* uuid)
 	
 	if(retval != SQLITE_DONE && retval != SQLITE_ROW)
 	{
-		printf("sql: findKid: sqlite3_step() error: %d", retval);
+		dbgLog("sqlite3_step() error: %d", retval);
 		return 0;
 	}
 
 	retval = sqlite3_finalize(query);
 	if(retval != SQLITE_OK)
 	{
-		printf("sql: findKid: sqlite3_finalize() error: %d", retval);
+		dbgLog("sqlite3_finalize() error: %d", retval);
 		return 0;
 	}
 	
@@ -281,20 +279,20 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d", retval);
 			return 0;
 		}
 		
 		retval = sqlite3_bind_int(query, 1, vid);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d", retval);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
-			printf("sql: findKid: sqlite3_step() error: %d", retval);
+			dbgLog("sqlite3_step() error: %d", retval);
 			return 0;
 		}
 		
@@ -307,7 +305,7 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_finalize(query);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_finalize() error: %d", retval);
+			dbgLog("sqlite3_finalize() error: %d", retval);
 			free(*ctJSON);
 			return 0;
 		}
@@ -330,20 +328,20 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d", retval);
 			return 0;
 		}
 		
 		retval = sqlite3_bind_text(query, 1, uuid, -1, SQLITE_STATIC);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d", retval);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
-			printf("sql: findKid: sqlite3_step() error: %d\n", retval);
+			dbgLog("sqlite3_step() error: %d\n", retval);
 			return 0;
 		}
 		
@@ -367,7 +365,7 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_finalize(query);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_finalize() error: %d", retval);
+			dbgLog("sqlite3_finalize() error: %d", retval);
 			free(*ctJSON);
 			return 0;
 		}
@@ -381,20 +379,20 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d", retval);
 			return 0;
 		}
 		
 		retval = sqlite3_bind_text(query, 1, tmpUuid, -1, SQLITE_STATIC);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_prepare_v2() error: %d", retval);
+			dbgLog("sqlite3_prepare_v2() error: %d", retval);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
-			printf("sql: findKid: sqlite3_step() error: %d", retval);
+			dbgLog("sqlite3_step() error: %d", retval);
 			return 0;
 		}
 		
@@ -407,7 +405,7 @@ int findKid(char** ctJSON, const char* uuid)
 		retval = sqlite3_finalize(query);
 		if(retval != SQLITE_OK)
 		{
-			printf("sql: findKid: sqlite3_finalize() error: %d", retval);
+			dbgLog("sqlite3_finalize() error: %d", retval);
 			free(*ctJSON);
 			return 0;
 		}
