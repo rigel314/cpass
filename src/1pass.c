@@ -22,6 +22,8 @@ int addKey(struct keys** keylist, const char* uuid, char* key, enum keyType type
 		return 1;
 
 	struct keys* new = malloc(sizeof(struct keys));
+	if(!new)
+		return 2;
 	new->next = NULL;
 	new->type = type;
 	strncpy(new->kid, uuid, 27);
@@ -35,13 +37,18 @@ int addKey(struct keys** keylist, const char* uuid, char* key, enum keyType type
 			break;
 		case KT_rsa:
 			new->rsaJSON = malloc(strlen(key)+1);
+			if(!new->rsaJSON)
+			{
+				free(new);
+				return 2;
+			}
 			strcpy(new->rsaJSON, key);
 			if(keyout)
 				*keyout = new->rsaJSON;
 			break;
 		default:
 			free(new);
-			return 2;
+			return 3;
 			break;
 	}
 	
@@ -112,7 +119,18 @@ int decryptKey(char**ptJSON, char* ctJSON)
 	struct json_object* data;
 	json_object_object_get_ex(jobj, "data", &data);
 	char* ct = malloc(base64contraction(json_object_get_string_len(data))+1);
+	if(!ct)
+	{
+		json_object_put(jobj);
+		return 0;
+	}
 	char* pt = malloc(base64contraction(json_object_get_string_len(data))+1);
+	if(!pt)
+	{
+		json_object_put(jobj);
+		free(ct);
+		return 0;
+	}
 	int ctlen;
 	int ptlen;
 	ctlen = base64dec(ct, json_object_get_string_len(data), json_object_get_string(data));
@@ -202,11 +220,23 @@ int getKeyByUUID(char** out, const char* uuid)
 					struct json_object* k;
 					json_object_object_get_ex(jobj, "k", &k);
 					addKey(&keys, uuid, ptJSON, KT_aes, out);
+					if(!out)
+					{
+						free(ctJSON);
+						free(ptJSON);
+						return 0;
+					}
 					ret = base64dec(*out, json_object_get_string_len(k), json_object_get_string(k));
 					json_object_put(k);
 					break;
 				case KT_rsa:
 					addKey(&keys, uuid, ptJSON, KT_rsa, out);
+					if(!out)
+					{
+						free(ctJSON);
+						free(ptJSON);
+						return 0;
+					}
 					ret = strlen(ptJSON);
 					break;
 				default:

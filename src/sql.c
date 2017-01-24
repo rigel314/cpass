@@ -203,12 +203,23 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	json_object_object_get_ex(jobj, "p2s", &val);
 	int size = json_object_get_string_len(val);
 	*p2s = malloc(size+1);
+	if(!*p2s)
+	{
+		json_object_put(jobj);
+		return 0;
+	}
 	memcpy(*p2s, json_object_get_string(val), size);
 	(*p2s)[size] = '\0';
 	
 	json_object_object_get_ex(jobj, "alg", &val);
 	size = json_object_get_string_len(val);
 	*alg = malloc(size+1);
+	if(!*alg)
+	{
+		free(*p2s);
+		json_object_put(jobj);
+		return 0;
+	}
 	memcpy(*alg, json_object_get_string(val), size);
 	(*alg)[size] = '\0';
 
@@ -309,6 +320,10 @@ int findKid(char** ctJSON, const char* uuid)
 		char* enc_vault_key = (char*) sqlite3_column_text(query, 0);
 		int size = sqlite3_column_bytes(query, 0);
 		*ctJSON = malloc(size+1);
+		if(!*ctJSON)
+		{
+			return 0;
+		}
 		memcpy(*ctJSON, enc_vault_key, size);
 		(*ctJSON)[size] = '\0';
 
@@ -368,6 +383,11 @@ int findKid(char** ctJSON, const char* uuid)
 		enc_pri_key = json_object_get_string(jobj);
 		int size = strlen(enc_pri_key);
 		*ctJSON = malloc(size+1);
+		if(!*ctJSON)
+		{
+			json_object_put(jobj);
+			return 0;
+		}
 		memcpy(*ctJSON, enc_pri_key, size);
 		(*ctJSON)[size] = '\0';
 		json_object_put(jobj);
@@ -379,6 +399,8 @@ int findKid(char** ctJSON, const char* uuid)
 			free(*ctJSON);
 			return 0;
 		}
+		
+		return 1;
 	}
 	else
 	{
@@ -409,6 +431,10 @@ int findKid(char** ctJSON, const char* uuid)
 		char* enc_sym_key = (char*) sqlite3_column_text(query, 0);
 		int size = sqlite3_column_bytes(query, 0);
 		*ctJSON = malloc(size+1);
+		if(!*ctJSON)
+		{
+			return 0;
+		}
 		memcpy(*ctJSON, enc_sym_key, size);
 		(*ctJSON)[size] = '\0';
 		
@@ -419,9 +445,11 @@ int findKid(char** ctJSON, const char* uuid)
 			free(*ctJSON);
 			return 0;
 		}
+		
+		return 1;
 	}
 	
 	// TODO: figure out what to do with uuid = 'mp'
 
-	return 1;
+	return 0;
 }

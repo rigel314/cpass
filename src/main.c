@@ -16,7 +16,6 @@
 // TODO: Add some kind of UI
 // TODO: Connect to browser extension
 // TODO: check json tokener parsing
-// TODO: check mallocs
 
 #ifndef TESTS
 int main(int argc, char** argv)
