@@ -8,6 +8,8 @@
 #ifndef SRC_UTIL_H_
 #define SRC_UTIL_H_
 
+#include <stdio.h>
+
 extern int base64expansion(int len);
 extern int base64contraction(int len);
 

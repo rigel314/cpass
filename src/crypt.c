@@ -240,5 +240,7 @@ int testMasterKey()
 //	printf("\n");
 	
 	ret += testMemcmp("masterKey test", km, truthMUK, MUKkeyLen);
+	
+	return ret;
 }
 #endif

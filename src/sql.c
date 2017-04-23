@@ -100,12 +100,13 @@ int printItemJSON(char* file, char* symkey)
 	{
 		counter++;
 		
-		int id = sqlite3_column_int(query, 0);
+//		int id = sqlite3_column_int(query, 0);
 		char* overview = (char*) sqlite3_column_text(query, 1);
-		char* pt;
+		char* pt = NULL;
 		int ret = decryptItem(&pt, overview);
 		
-		hexdump("", pt, strlen(pt));
+		if(pt)
+			hexdump("", pt, strlen(pt));
 		
 		printf("\n");
 		
@@ -170,8 +171,8 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	int retval;
 	sqlite3_stmt* query;
 	char* queryFmt;
-	int found = 0;
-	int vid = 0;
+//	int found = 0;
+//	int vid = 0;
 	
 	queryFmt = "SELECT enc_sym_key FROM keysets WHERE encrypted_by==?001 ORDER BY updated_at DESC LIMIT 1;";
 
@@ -449,7 +450,5 @@ int findKid(char** ctJSON, const char* uuid)
 		return 1;
 	}
 	
-	// TODO: figure out what to do with uuid = 'mp'
-
 	return 0;
 }

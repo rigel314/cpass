@@ -13,6 +13,7 @@
 #include "util.h"
 #include "crypt.h"
 #include "sql.h"
+#include "gui.h"
 
 struct keys* keys = NULL;
 
@@ -100,12 +101,14 @@ enum keyType getKeytype(const char* name)
 		return KT_aes;
 	if(!strcmp(name, "RSA-OAEP"))
 		return KT_rsa;
+	if(!strcmp(name, "NONE"))
+		return KT_plain;
 	return KT_unknown;
 }
 
 int decryptKey(char**ptJSON, char* ctJSON)
 {
-	char* key;
+	char* key = NULL;
 	int ret = 0;
 	
 	struct json_object* jobj = json_tokener_parse(ctJSON);
@@ -160,9 +163,13 @@ int decryptKey(char**ptJSON, char* ctJSON)
 				*ptJSON = pt;
 				break;
 			
+			case KT_plain:
+				memcpy(pt, ct, ctlen);
+				*ptJSON = pt;
+				break;
+				
 			default:
 				free(pt);
-				free(ct);
 				break;
 		}
 	}
@@ -183,6 +190,7 @@ int decryptKey(char**ptJSON, char* ctJSON)
 int getKeyByUUID(char** out, const char* uuid)
 {
 	dbgLog("%s\n", uuid);
+
 	LLforeach(struct keys*, ptr, keys)
 	{
 		if(!strcmp(uuid, ptr->kid))
@@ -201,6 +209,26 @@ int getKeyByUUID(char** out, const char* uuid)
 		}
 	}
 	
+	if(!strcmp(uuid, "mp"))
+	{
+		char* pass = NULL;
+		askPass("Enter Master Password", &pass);
+
+		if(pass)
+		{
+			char km[32];
+			masterKey(km, pass, accountKey+8, email, id);
+			OPENSSL_cleanse(pass, strlen(pass));
+			addKey(&keys, uuid, km, KT_aes, out);
+			if(!out)
+			{
+				return 0;
+			}
+			return 1;
+		}
+		return 0;
+	}
+
 	char* ctJSON;
 	char* ptJSON;
 	*out = NULL;

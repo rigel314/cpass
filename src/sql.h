@@ -18,4 +18,9 @@ int findKid(char** ctJSON, const char* uuid);
 
 extern sqlite3* dbHandle;
 
+extern char accountKey[100];
+extern char email[];
+extern char id[];
+
+
 #endif /* SRC_SQL_H_ */

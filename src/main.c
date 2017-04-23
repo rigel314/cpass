@@ -12,10 +12,18 @@
 #include "crypt.h"
 #include "1pass.h"
 #include <openssl/crypto.h>
+#include "gui.h"
 
 // TODO: Add some kind of UI
 // TODO: Connect to browser extension
 // TODO: check json tokener parsing
+// TODO: finish plaintext "decrypting"
+// TODO: finish outputing plaintext json after askPass
+// TODO: related ^: keep a persistant key on the keylist with uuid nil or something OR make addkeytolist replace keys with identical uuids + call addkey after askPass every time.
+
+char accountKey[100] = ""; // get from user
+char email[] = "pi.rubiks@gmail.com"; // get from user
+char id[] = "ASWWYB";
 
 #ifndef TESTS
 int main(int argc, char** argv)
@@ -23,12 +31,8 @@ int main(int argc, char** argv)
 	if(argc != 2)
 		return 1;
 	
-	char km[32];
 	char pass[100] = "aoeu things";
-	char accountKey[100] = ""; // get from user
-	char email[] = "pi.rubiks@gmail.com"; // get from user
-	char id[] = "ASWWYB";
-	char salt[100] = ""; // get from keysets
+//	char salt[100] = ""; // get from keysets
 	FILE* fp = fopen("./enc/1passwordKey.txt", "r");
 	if(fp)
 	{
@@ -53,11 +57,12 @@ int main(int argc, char** argv)
 		OPENSSL_cleanse(tmp, 100);
 	}
 
-	openDB(argv[1]);
-
-	masterKey(km, pass, accountKey+8, email, id);
+	(void) pass;
 	
-	addKey(&keys, "mp", km, KT_aes, NULL);
+	// TODO: take arg for GUImode.
+	gmode = GFX_DEFAULT;
+	
+	openDB(argv[1]);
 
 	printItemJSON(argv[1], NULL);
 	

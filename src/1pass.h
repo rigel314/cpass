@@ -11,7 +11,7 @@
 #define UUIDLEN 26
 #define UUIDSTRLEN 32
 
-enum keyType {KT_unknown, KT_aes, KT_rsa};
+enum keyType {KT_unknown, KT_aes, KT_rsa, KT_plain};
 
 struct keys
 {
