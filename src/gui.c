@@ -20,3 +20,9 @@ int askPass(const char* msg, char** pass)
 	GUICALL(askPass(msg, pass))
 	return 0;
 }
+
+int showMainWin()
+{
+	GUICALL(showMainWin())
+	return 0;
+}

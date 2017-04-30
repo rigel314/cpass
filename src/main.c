@@ -17,9 +17,6 @@
 // TODO: Add some kind of UI
 // TODO: Connect to browser extension
 // TODO: check json tokener parsing
-// TODO: finish plaintext "decrypting"
-// TODO: finish outputing plaintext json after askPass
-// TODO: related ^: keep a persistant key on the keylist with uuid nil or something OR make addkeytolist replace keys with identical uuids + call addkey after askPass every time.
 
 char accountKey[100] = ""; // get from user
 char email[] = "pi.rubiks@gmail.com"; // get from user
@@ -63,8 +60,12 @@ int main(int argc, char** argv)
 	gmode = GFX_DEFAULT;
 	
 	openDB(argv[1]);
+	
+	initializeGUI();
+	
+	showMainWin();
 
-	printItemJSON(argv[1], NULL);
+//	printItemJSON(argv[1], NULL);
 	
 	return 0;
 }

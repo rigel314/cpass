@@ -72,10 +72,12 @@ ADDKDEPREFIX(ret,x)
 // Prototype standard functions in gui agnostic way.
 GUI(int, initializeGUI();)
 GUI(int, askPass(const char* msg, char** out);)
+GUI(int, showMainWin();)
 
 // wrapper functions
 int initializeGUI();
 int askPass(const char* msg, char** out);
+int showMainWin();
 
 enum GUImode { GM_NONE, GM_CURSES, GM_GTK, GM_KDE };
 

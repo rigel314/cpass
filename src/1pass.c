@@ -219,6 +219,7 @@ int getKeyByUUID(char** out, const char* uuid)
 			char km[32];
 			masterKey(km, pass, accountKey+8, email, id);
 			OPENSSL_cleanse(pass, strlen(pass));
+			free(pass);
 			addKey(&keys, uuid, km, KT_aes, out);
 			if(!out)
 			{
