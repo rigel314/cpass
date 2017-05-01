@@ -52,18 +52,12 @@ int countItems(char* file)
 	if(retval != SQLITE_DONE)
 	{
 		dbgLog("sqlite3_step() error: %d\n", retval);
+		sqlite3_finalize(query);
 		sqlite3_close(handle);
 		return -1;
 	}
 
-	retval = sqlite3_finalize(query);
-	if(retval != SQLITE_OK)
-	{
-		dbgLog("sqlite3_finalize() error: %d\n", retval);
-		sqlite3_close(handle);
-		return -1;
-	}
-
+	sqlite3_finalize(query);
 	sqlite3_close(handle);
 	
 	return counter;
@@ -72,25 +66,15 @@ int countItems(char* file)
 int printItemJSON(char* file, char* symkey)
 {
 	int retval;
-	sqlite3* handle;
 	sqlite3_stmt* query;
 	char* queryFmt;
 	
-	retval = sqlite3_open_v2(file, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
-	if(retval != SQLITE_OK)
-	{
-		dbgLog("sqlite3_open() error: %d\n", retval);
-		sqlite3_close(handle);
-		return -1;
-	}
-	
 	queryFmt = "SELECT id, overview FROM items ORDER BY id;";
 	
-	retval = sqlite3_prepare_v2(handle, queryFmt, -1, &query, NULL);
+	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
 		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
-		sqlite3_close(handle);
 		return -1;
 	}
 	
@@ -120,20 +104,12 @@ int printItemJSON(char* file, char* symkey)
 	if(retval != SQLITE_DONE)
 	{
 		dbgLog("sqlite3_step() error: %d\n", retval);
-		sqlite3_close(handle);
+		sqlite3_finalize(query);
 		return -1;
 	}
 
-	retval = sqlite3_finalize(query);
-	if(retval != SQLITE_OK)
-	{
-		dbgLog("sqlite3_finalize() error: %d\n", retval);
-		sqlite3_close(handle);
-		return -1;
-	}
+	sqlite3_finalize(query);
 
-	sqlite3_close(handle);
-	
 	return counter;
 }
 
@@ -151,8 +127,6 @@ int openDB(char* file)
 	}
 	return 0;
 }
-
-// TODO: finalize before return
 
 int getMUKsalt(char** p2s, char** alg, int* p2c)
 {
@@ -187,6 +161,7 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	if(retval != SQLITE_OK)
 	{
 		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
+		sqlite3_finalize(query);
 		return 0;
 	}
 
@@ -194,6 +169,7 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	if(retval != SQLITE_ROW)
 	{
 		dbgLog("sqlite3_step() error: %d\n", retval);
+		sqlite3_finalize(query);
 		return 0;
 	}
 
@@ -207,6 +183,7 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	if(!*p2s)
 	{
 		json_object_put(jobj);
+		sqlite3_finalize(query);
 		return 0;
 	}
 	memcpy(*p2s, json_object_get_string(val), size);
@@ -219,6 +196,7 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	{
 		free(*p2s);
 		json_object_put(jobj);
+		sqlite3_finalize(query);
 		return 0;
 	}
 	memcpy(*alg, json_object_get_string(val), size);
@@ -229,14 +207,7 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 
 	json_object_put(jobj);
 	
-	retval = sqlite3_finalize(query);
-	if(retval != SQLITE_OK)
-	{
-		dbgLog("sqlite3_finalize() error: %d\n", retval);
-		free(*alg);
-		free(*p2s);
-		return 0;
-	}
+	sqlite3_finalize(query);
 	
 	return 1;
 }
@@ -285,15 +256,11 @@ int findKid(char** ctJSON, const char* uuid)
 	if(retval != SQLITE_DONE && retval != SQLITE_ROW)
 	{
 		dbgLog("sqlite3_step() error: %d\n", retval);
+		sqlite3_finalize(query);
 		return 0;
 	}
 
-	retval = sqlite3_finalize(query);
-	if(retval != SQLITE_OK)
-	{
-		dbgLog("sqlite3_finalize() error: %d\n", retval);
-		return 0;
-	}
+	sqlite3_finalize(query);
 	
 	if(found)
 	{
@@ -309,12 +276,14 @@ int findKid(char** ctJSON, const char* uuid)
 		if(retval != SQLITE_OK)
 		{
 			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
+			sqlite3_finalize(query);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
 			dbgLog("sqlite3_step() error: %d\n", retval);
+			sqlite3_finalize(query);
 			return 0;
 		}
 		
@@ -323,18 +292,14 @@ int findKid(char** ctJSON, const char* uuid)
 		*ctJSON = malloc(size+1);
 		if(!*ctJSON)
 		{
+			sqlite3_finalize(query);
 			return 0;
 		}
 		memcpy(*ctJSON, enc_vault_key, size);
 		(*ctJSON)[size] = '\0';
 
-		retval = sqlite3_finalize(query);
-		if(retval != SQLITE_OK)
-		{
-			dbgLog("sqlite3_finalize() error: %d\n", retval);
-			free(*ctJSON);
-			return 0;
-		}
+		sqlite3_finalize(query);
+
 		return 1;
 	}
 	
@@ -362,12 +327,14 @@ int findKid(char** ctJSON, const char* uuid)
 		if(retval != SQLITE_OK)
 		{
 			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
+			sqlite3_finalize(query);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
 			dbgLog("sqlite3_step() error: %d\n\n", retval);
+			sqlite3_finalize(query);
 			return 0;
 		}
 		
@@ -387,19 +354,14 @@ int findKid(char** ctJSON, const char* uuid)
 		if(!*ctJSON)
 		{
 			json_object_put(jobj);
+			sqlite3_finalize(query);
 			return 0;
 		}
 		memcpy(*ctJSON, enc_pri_key, size);
 		(*ctJSON)[size] = '\0';
 		json_object_put(jobj);
 		
-		retval = sqlite3_finalize(query);
-		if(retval != SQLITE_OK)
-		{
-			dbgLog("sqlite3_finalize() error: %d\n", retval);
-			free(*ctJSON);
-			return 0;
-		}
+		sqlite3_finalize(query);
 		
 		return 1;
 	}
@@ -420,12 +382,14 @@ int findKid(char** ctJSON, const char* uuid)
 		if(retval != SQLITE_OK)
 		{
 			dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
+			sqlite3_finalize(query);
 			return 0;
 		}
 		
 		if((retval = sqlite3_step(query)) != SQLITE_ROW)
 		{
 			dbgLog("sqlite3_step() error: %d\n", retval);
+			sqlite3_finalize(query);
 			return 0;
 		}
 		
@@ -434,21 +398,47 @@ int findKid(char** ctJSON, const char* uuid)
 		*ctJSON = malloc(size+1);
 		if(!*ctJSON)
 		{
+			sqlite3_finalize(query);
 			return 0;
 		}
 		memcpy(*ctJSON, enc_sym_key, size);
 		(*ctJSON)[size] = '\0';
 		
-		retval = sqlite3_finalize(query);
-		if(retval != SQLITE_OK)
-		{
-			dbgLog("sqlite3_finalize() error: %d\n", retval);
-			free(*ctJSON);
-			return 0;
-		}
+		sqlite3_finalize(query);
 		
 		return 1;
 	}
 	
 	return 0;
+}
+
+int getCatagories(char*** names)
+{
+	int retval;
+	sqlite3_stmt* query;
+	char* queryFmt;
+	
+	queryFmt = "SELECT DISTINCT categories.plural_name FROM items INNER JOIN categories ON items.category_uuid=categories.uuid;";
+	
+	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
+	if(retval != SQLITE_OK)
+	{
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
+		return 0;
+	}
+	
+	*names = NULL;
+	int rowCount = 0;
+	while((retval = sqlite3_step(query)) == SQLITE_ROW)
+	{
+		rowCount++;
+		*names = realloc(*names, rowCount * sizeof(char*));
+		const char* name = sqlite3_column_text(query, 0);
+		(*names)[rowCount - 1] = malloc(strlen(name) + 1);
+		memcpy((*names)[rowCount - 1], name, strlen(name) + 1);
+	}
+	
+	sqlite3_finalize(query);
+	
+	return rowCount;
 }

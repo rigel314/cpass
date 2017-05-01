@@ -15,6 +15,7 @@ int printItemJSON(char* file, char* symkey);
 int openDB(char* file);
 int getMUKsalt(char** p2s, char** alg, int* p2c);
 int findKid(char** ctJSON, const char* uuid);
+int getCatagories(char*** names);
 
 extern sqlite3* dbHandle;
 
