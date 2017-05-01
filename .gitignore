@@ -1,9 +1,8 @@
 build
 cpass
 cpass-test
-1password10.sqlite
+1password10*.sqlite
 1p.sq
 enc
-1password10_2.sqlite
 *~
 \#*\#
