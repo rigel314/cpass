@@ -9,6 +9,7 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../sql.h"
 
 static char* askpassXML = ""
 #include "xml/gtkaskpass.pxml"
@@ -64,63 +65,6 @@ ADDGTKPREFIX(int, initializeGUI())
 
 ADDGTKPREFIX(int, askPass(const char* msg, char** out))
 {
-//	GtkWidget* window;
-//	GtkWidget* pass;
-//	GtkWidget* submit;
-//	GtkWidget* vbox;
-//
-//	// Setup the window
-//	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-//	gtk_container_set_border_width(GTK_CONTAINER(window), 10);
-//
-//	// Setup a container box
-//	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-//
-//	// Setup the text entry
-//	GValue pass_placeHolder = G_VALUE_INIT;
-//	GValue pass_caps = G_VALUE_INIT;
-//	GValue pass_inputPurpose = G_VALUE_INIT;
-//	GValue pass_vis = G_VALUE_INIT;
-//	pass = gtk_entry_new();
-//	g_value_init(&pass_placeHolder, G_TYPE_STRING);
-//	g_value_set_static_string(&pass_placeHolder, msg);
-//	g_value_init(&pass_caps, G_TYPE_BOOLEAN);
-//	g_value_set_boolean(&pass_caps, TRUE);
-//	g_value_init(&pass_inputPurpose, G_TYPE_INT);
-//	g_value_set_int(&pass_inputPurpose, GTK_INPUT_PURPOSE_PASSWORD);
-//	g_value_init(&pass_vis, G_TYPE_BOOLEAN);
-//	g_value_set_boolean(&pass_vis, FALSE);
-//	g_object_set_property((GObject*)pass, "placeholder-text", &pass_placeHolder);
-//	g_object_set_property((GObject*)pass, "caps-lock-warning", &pass_caps);
-//	g_object_set_property((GObject*)pass, "input-purpose", &pass_inputPurpose);
-//	g_object_set_property((GObject*)pass, "visibility", &pass_vis);
-//	g_signal_connect(pass, "key-release-event", G_CALLBACK(passkeyup), window);
-//
-//	// Setup the submit button
-//	submit = gtk_button_new_with_label ("Submit");
-//	g_signal_connect(submit, "clicked", G_CALLBACK(submitBut), window);
-//
-//	// Setup window event handlers
-//	struct gtkAskPassData gapd = {.pass = pass, .out = out};
-//	g_signal_connect(window, "delete-event", G_CALLBACK(delete_event), NULL);
-//	g_signal_connect(window, "destroy", G_CALLBACK(destroy), &gapd);
-//
-//	// Build the display, and show everything
-//	gtk_container_add (GTK_CONTAINER(window), vbox);
-//	gtk_box_pack_start(GTK_BOX(vbox), pass, TRUE, FALSE, 0);
-//	gtk_box_pack_start(GTK_BOX(vbox), submit, FALSE, FALSE, 0);
-//	gtk_widget_show(pass);
-//	gtk_widget_show(submit);
-//	gtk_widget_show(vbox);
-//	gtk_widget_show(window);
-//
-//	gtk_main();
-//
-//	g_value_unset(&pass_placeHolder);
-//	g_value_unset(&pass_caps);
-//	g_value_unset(&pass_inputPurpose);
-//	g_value_unset(&pass_vis);
-	
 	GtkBuilder* builder;
 	GObject* window;
 	GObject* lblPrompt;
@@ -168,6 +112,33 @@ static void destroy(GtkWidget* widget, gpointer data)
 	gtk_main_quit();
 }
 
+GObject* g_object_clone(GObject *src)
+{
+	GObject *dst;
+	GParameter *params;
+	GParamSpec **specs;
+	guint n, n_specs, n_params;
+
+	specs = g_object_class_list_properties(G_OBJECT_GET_CLASS(src), &n_specs);
+	params = g_new0(GParameter, n_specs);
+	n_params = 0;
+
+	for(n = 0; n < n_specs; n++)
+		if(strcmp(specs[n]->name, "parent") && (specs[n]->flags & G_PARAM_READWRITE) == G_PARAM_READWRITE)
+		{
+			params[n_params].name = g_intern_string(specs[n]->name);
+			g_value_init(&params[n_params].value, specs[n]->value_type);
+			g_object_get_property(src, specs[n]->name, &params[n_params].value);
+			++ n_params;
+		}
+
+	dst = g_object_newv(G_TYPE_FROM_INSTANCE(src), n_params, params);
+	g_free(specs);
+	g_free(params);
+
+	return dst;
+}
+
 ADDGTKPREFIX(int, showMainWin())
 {
 	GtkBuilder* builder = gtk_builder_new();
@@ -177,6 +148,38 @@ ADDGTKPREFIX(int, showMainWin())
 	g_signal_connect(window, "delete-event", G_CALLBACK(delete_event), NULL);
 	g_signal_connect(window, "destroy", G_CALLBACK(destroy), NULL);
 
+	GObject* boxCats = gtk_builder_get_object(builder, "boxCatagoryList");
+	
+	GtkWidget* rule = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+	gtk_container_add(GTK_CONTAINER(boxCats), rule);
+	gtk_widget_show(rule);
+	GtkWidget* lbl = gtk_label_new(NULL);
+	gtk_label_set_markup((GtkLabel*)lbl, "<b><small>Categories</small></b>");
+	gtk_container_add(GTK_CONTAINER(boxCats), lbl);
+	gtk_widget_show(lbl);
+	
+	GObject* butAllItems = gtk_builder_get_object(builder, "butAllItems");
+	
+	char** cats = NULL;
+	int numCats = getCatagories(&cats);
+	for(int i = 0; i < numCats; i++)
+	{
+		GObject* but = g_object_clone(butAllItems);
+		gtk_button_set_label((GtkButton*)but, cats[i]);
+		gtk_container_add(GTK_CONTAINER(boxCats), (GtkWidget*)but);
+		gtk_widget_show((GtkWidget*)but);
+		free(cats[i]);
+	}
+	free(cats);
+	
+	rule = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+	gtk_container_add(GTK_CONTAINER(boxCats), rule);
+	gtk_widget_show(rule);
+	lbl = gtk_label_new(NULL);
+	gtk_label_set_markup((GtkLabel*)lbl, "<b><small>Tags</small></b>");
+	gtk_container_add(GTK_CONTAINER(boxCats), lbl);
+	gtk_widget_show(lbl);
+	
 	gtk_main();
 	return 0;
 }
