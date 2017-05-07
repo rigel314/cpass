@@ -19,102 +19,78 @@
 
 sqlite3* dbHandle = NULL;
 
-int countItems(char* file)
-{
-	int retval;
-	sqlite3* handle;
-	sqlite3_stmt* query;
-	char* queryFmt;
-	
-	retval = sqlite3_open_v2(file, &handle, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, NULL);
-	if(retval != SQLITE_OK)
-	{
-		dbgLog("sqlite3_open() error: %d\n", retval);
-		sqlite3_close(handle);
-		return -1;
-	}
-	
-	queryFmt = "SELECT id, category_uuid FROM items ORDER BY category_uuid;";
-	
-	retval = sqlite3_prepare_v2(handle, queryFmt, -1, &query, NULL);
-	if(retval != SQLITE_OK)
-	{
-		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
-		sqlite3_close(handle);
-		return -1;
-	}
-	
-	int counter=0;
-	while((retval = sqlite3_step(query)) == SQLITE_ROW)
-	{
-		counter++;
-	}
-	if(retval != SQLITE_DONE)
-	{
-		dbgLog("sqlite3_step() error: %d\n", retval);
-		sqlite3_finalize(query);
-		sqlite3_close(handle);
-		return -1;
-	}
-
-	sqlite3_finalize(query);
-	sqlite3_close(handle);
-	
-	return counter;
-}
-
-int printItemJSON()
+int getTags(char*** tags)
 {
 	int retval;
 	sqlite3_stmt* query;
 	char* queryFmt;
 	
-	queryFmt = "SELECT id, overview FROM items ORDER BY id;";
+	queryFmt = "SELECT overview FROM items ORDER BY id;";
 	
 	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
 	{
 		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
-		return -1;
+		return 0;
 	}
 	
 	int counter=0;
+	*tags = NULL;
 	while((retval = sqlite3_step(query)) == SQLITE_ROW)
 	{
-		counter++;
-		
-//		int id = sqlite3_column_int(query, 0);
-		char* overview = (char*) sqlite3_column_text(query, 1);
+		char* overview = (char*) sqlite3_column_text(query, 0);
 		char* pt = NULL;
 		int ret = decryptItem(&pt, overview);
 		
-		if(pt)
+		if(pt && ret)
 		{
 			struct json_object* jobj = json_tokener_parse(pt);
 			json_object_object_foreach(jobj, name, val)
 			{
-				if(!strcmp("tags", name))
+				if(!strcmp("tags", name) && json_object_is_type(val, json_type_array))
 				{
-					struct json_object* tags;
-					json_object_object_get_ex(jobj, name, &tags);
-					dbgLog("%s\n", json_object_get_string(tags));
+					int len = json_object_array_length(val);
+					for(int i = 0; i < len; i++)
+					{
+						struct json_object* arr = json_object_array_get_idx(val, i);
+						const char* rowTag = json_object_get_string(arr);
+						int new = 1;
+						for(int j = 0; j < counter; j++)
+						{
+							if(!strcmp(rowTag, (*tags)[j]))
+							{
+								new = 0;
+								break;
+							}
+						}
+						if(!new)
+							continue;
+						
+						counter++;
+						char** tagsBak = *tags;
+						*tags = realloc(*tags, sizeof(char*) * counter);
+						if(!*tags)
+						{
+							counter--;
+							*tags = tagsBak;
+							break;
+						}
+						(*tags)[counter-1] = malloc(strlen(rowTag) + 1);
+						if(!(*tags)[counter-1])
+						{
+							counter--;
+							break;
+						}
+						strcpy((*tags)[counter-1], rowTag);
+					}
 				}
 			}
+			free(pt);
 		}
-		
-		free(pt);
-
-		if(!ret)
+		else
 		{
-			retval = SQLITE_DONE;
 			break;
 		}
-	}
-	if(retval != SQLITE_DONE)
-	{
-		dbgLog("sqlite3_step() error: %d\n", retval);
-		sqlite3_finalize(query);
-		return -1;
 	}
 
 	sqlite3_finalize(query);
@@ -421,13 +397,13 @@ int findKid(char** ctJSON, const char* uuid)
 	return 0;
 }
 
-int getCatagories(char*** names)
+int getCatagories(struct catagory** names)
 {
 	int retval;
 	sqlite3_stmt* query;
 	char* queryFmt;
 	
-	queryFmt = "SELECT DISTINCT categories.plural_name FROM items INNER JOIN categories ON items.category_uuid=categories.uuid;";
+	queryFmt = "SELECT DISTINCT categories.plural_name,categories.uuid FROM items INNER JOIN categories ON items.category_uuid=categories.uuid;";
 	
 	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
 	if(retval != SQLITE_OK)
@@ -441,10 +417,27 @@ int getCatagories(char*** names)
 	while((retval = sqlite3_step(query)) == SQLITE_ROW)
 	{
 		rowCount++;
-		*names = realloc(*names, rowCount * sizeof(char*));
+		struct catagory* namesBak = *names;
+		*names = realloc(*names, rowCount * sizeof(struct catagory));
+		if(!*names)
+		{
+			*names = namesBak;
+			rowCount--;
+			break;
+		}
+		struct catagory* cat = (*names)+(rowCount - 1);
+
 		const char* name = sqlite3_column_text(query, 0);
-		(*names)[rowCount - 1] = malloc(strlen(name) + 1);
-		memcpy((*names)[rowCount - 1], name, strlen(name) + 1);
+		cat->name = malloc(strlen(name) + 1);
+		if(!cat->name)
+		{
+			rowCount--;
+			break;
+		}
+		memcpy(cat->name, name, strlen(name) + 1);
+		
+		int id = sqlite3_column_int(query, 1);
+		cat->id = id;
 	}
 	
 	sqlite3_finalize(query);

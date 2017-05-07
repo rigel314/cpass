@@ -53,6 +53,13 @@ int main(int argc, char** argv)
 		fclose(fp);
 		OPENSSL_cleanse(tmp, 100);
 	}
+	else
+	{
+		#ifdef DEBUG
+			printf("Debug File ./enc/1passwordKey.txt not opened...");
+			return 1;
+		#endif
+	}
 
 	(void) pass;
 	

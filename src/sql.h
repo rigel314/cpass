@@ -10,12 +10,17 @@
 
 #include <sqlite3.h>
 
-int countItems(char* file);
-int printItemJSON();
+struct catagory
+{
+	int id;
+	char* name;
+};
+
+int getTags();
 int openDB(char* file);
 int getMUKsalt(char** p2s, char** alg, int* p2c);
 int findKid(char** ctJSON, const char* uuid);
-int getCatagories(char*** names);
+int getCatagories(struct catagory** names);
 
 extern sqlite3* dbHandle;
 

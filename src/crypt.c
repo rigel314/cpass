@@ -118,6 +118,7 @@ int hkdf(char* okm, int olen, char* salt, int slen, char* key, int klen, char* i
  *	cipher text as ct, ctlen bytes long
  *	key as key, 32 bytes long
  *	initial value as iv, 12 bytes long
+ * returns FALSE on failure
  */
 int aes256gcmdec(char* pt, int* ptlen, const char* ct, int ctlen, const char* key, const char* iv)
 {
@@ -143,6 +144,7 @@ int aes256gcmdec(char* pt, int* ptlen, const char* ct, int ctlen, const char* ke
  * takes:
  *	cipher text as ct, ctlen bytes long
  *	the private key in JSON form with with base64url encoded values for keys n, d, p, q, dp, dq, qi, and e
+ * returns FALSE on failure
  */
 int rsaoaepdec(char* pt, int* ptlen, char* ct, int ctlen, char* keyJSON)
 {

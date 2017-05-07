@@ -9,8 +9,8 @@ ifneq (,$(findstring gtk,$(GUI)))
 	gobjects += ${builddir}/gui/gui-gtk.o
 	xmlobjects += $(subst .xml,.pxml,$(wildcard src/gui/xml/gtk*.xml))
 	FLAGS += -DGFX_GTK
-	gINCFLAGS = $(shell pkg-config --cflags gtk+-3.0)
-	gLFLAGS = $(shell pkg-config --libs gtk+-3.0)
+	gINCFLAGS += $(shell pkg-config --cflags gtk+-3.0)
+	gLFLAGS += $(shell pkg-config --libs gtk+-3.0)
 endif
 ifneq (,$(findstring curses,$(GUI)))
 	gobjects += ${builddir}/gui/gui-curses.o

@@ -106,6 +106,9 @@ enum keyType getKeytype(const char* name)
 	return KT_unknown;
 }
 
+/**
+ * returns FALSE on failure
+ */
 int decryptKey(char**ptJSON, char* ctJSON)
 {
 	char* key = NULL;
@@ -286,6 +289,9 @@ int getKeyByUUID(char** out, const char* uuid)
 	return 0;
 }
 
+/**
+ * returns FALSE on failure
+ */
 int decryptItem(char** ptJSON, char* ctJSON)
 {
 	return decryptKey(ptJSON, ctJSON);

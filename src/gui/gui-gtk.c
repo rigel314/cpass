@@ -28,6 +28,20 @@ struct gtkAskPassData
 	char** out;
 };
 
+struct catagoryButData
+{
+	int id;
+	GObject* box;
+};
+
+// Internal GUI functions
+static void populateCatagories(GObject* butAllItems, GObject* boxCats);
+static void populateTags(GObject* butAllItems, GObject* boxTags);
+static void hilightBut(GtkWidget* but, gpointer data);
+static void deleteBut(GtkWidget* but, gpointer data);
+GObject* g_object_clone(GObject *src);
+
+// Callbacks
 static gboolean delete_event(GtkWidget* widget, GdkEvent* event, gpointer data)
 {
 	return FALSE;
@@ -69,6 +83,132 @@ static void passkeyup(GtkWidget* widget, GdkEvent* event, gpointer data)
 		submitBut(NULL, data);
 	}
 }
+static void destroy(GtkWidget* widget, gpointer data)
+{
+	gtk_main_quit();
+}
+static void catagoryBut_Click(GtkButton* but, gpointer data)
+{
+	struct catagoryButData* x = data;
+	
+	gtk_container_foreach(GTK_CONTAINER(x->box), hilightBut, but);
+	
+	printf("id: %d\n", x->id);
+}
+static void catagoryBut_Destroy(GtkButton* but, gpointer data)
+{
+	free(data);
+}
+// End Callbacks
+
+// Internal GUI functions
+static void populateCatagories(GObject* butAllItems, GObject* boxCats)
+{
+	// destroy all existing children in boxCats
+	gtk_container_foreach(GTK_CONTAINER(boxCats), deleteBut, NULL);
+	
+	// create children in boxCats for each tag
+	struct catagory* cats = NULL;
+	int numCats = getCatagories(&cats);
+	for(int i = 0; i < numCats; i++)
+	{
+		GObject* but = g_object_clone(butAllItems);
+		if(!but)
+			break;
+		
+		gtk_button_set_label((GtkButton*)but, cats[i].name);
+		struct catagoryButData* data = malloc(sizeof(struct catagoryButData));
+		if(!data)
+		{
+			gtk_widget_destroy((GtkWidget*)but);
+			break;
+		}
+		data->id = cats[i].id;
+		data->box = boxCats;
+		g_signal_connect(but, "clicked", G_CALLBACK(catagoryBut_Click), data);
+		g_signal_connect(but, "destroy", G_CALLBACK(catagoryBut_Destroy), data);
+		gtk_container_add(GTK_CONTAINER(boxCats), (GtkWidget*)but);
+		gtk_widget_show((GtkWidget*)but);
+		
+		free(cats[i].name);
+	}
+	free(cats);
+}
+
+static void populateTags(GObject* butAllItems, GObject* boxTags)
+{
+	// destroy all existing children in boxTags
+	gtk_container_foreach(GTK_CONTAINER(boxTags), deleteBut, NULL);
+	
+	// create children in boxTags for each tag
+	char** tags;
+	int numTags = getTags(&tags);
+	
+	for(int i = 0; i < numTags; i++)
+	{
+		GObject* but = g_object_clone(butAllItems);
+		if(!but)
+			break;
+		
+		gtk_button_set_label((GtkButton*)but, tags[i]);
+		
+		gtk_container_add(GTK_CONTAINER(boxTags), (GtkWidget*)but);
+		gtk_widget_show((GtkWidget*)but);
+
+		free(tags[i]);
+	}
+	free(tags);
+}
+
+static void hilightBut(GtkWidget* but, gpointer data)
+{
+	GValue relief = G_VALUE_INIT;
+	g_value_init(&relief, GTK_TYPE_RELIEF_STYLE);
+	if(but == data)
+		g_value_set_enum(&relief, GTK_RELIEF_NORMAL);
+	else
+		g_value_set_enum(&relief, GTK_RELIEF_NONE);
+	g_object_set_property((GObject*)but, "relief", &relief);
+}
+
+static void deleteBut(GtkWidget* but, gpointer data)
+{
+	gtk_widget_destroy(but);
+}
+
+// Thank you stack overflow: http://stackoverflow.com/questions/3003655/is-there-a-good-way-to-copy-a-gtk-widget
+GObject* g_object_clone(GObject *src)
+{
+	GObject *dst;
+	GParameter *params;
+	GParamSpec **specs;
+	guint n, n_specs, n_params;
+
+	specs = g_object_class_list_properties(G_OBJECT_GET_CLASS(src), &n_specs);
+	params = g_new0(GParameter, n_specs);
+	if(!params)
+	{
+		g_free(specs);
+		return NULL;
+	}
+	n_params = 0;
+
+	for(n = 0; n < n_specs; n++)
+		if(strcmp(specs[n]->name, "parent") && (specs[n]->flags & G_PARAM_READWRITE) == G_PARAM_READWRITE)
+		{
+			params[n_params].name = g_intern_string(specs[n]->name);
+			g_value_init(&params[n_params].value, specs[n]->value_type);
+			g_object_get_property(src, specs[n]->name, &params[n_params].value);
+			n_params++;
+		}
+
+	dst = g_object_newv(G_TYPE_FROM_INSTANCE(src), n_params, params);
+	g_free(specs);
+	g_free(params);
+
+	return dst;
+}
+// End Internal GUI functions 
 
 ADDGTKPREFIX(int, initializeGUI())
 {
@@ -120,38 +260,6 @@ ADDGTKPREFIX(int, askPass(const char* msg, char** out))
 	return 0;
 }
 
-static void destroy(GtkWidget* widget, gpointer data)
-{
-	gtk_main_quit();
-}
-
-GObject* g_object_clone(GObject *src)
-{
-	GObject *dst;
-	GParameter *params;
-	GParamSpec **specs;
-	guint n, n_specs, n_params;
-
-	specs = g_object_class_list_properties(G_OBJECT_GET_CLASS(src), &n_specs);
-	params = g_new0(GParameter, n_specs);
-	n_params = 0;
-
-	for(n = 0; n < n_specs; n++)
-		if(strcmp(specs[n]->name, "parent") && (specs[n]->flags & G_PARAM_READWRITE) == G_PARAM_READWRITE)
-		{
-			params[n_params].name = g_intern_string(specs[n]->name);
-			g_value_init(&params[n_params].value, specs[n]->value_type);
-			g_object_get_property(src, specs[n]->name, &params[n_params].value);
-			++ n_params;
-		}
-
-	dst = g_object_newv(G_TYPE_FROM_INSTANCE(src), n_params, params);
-	g_free(specs);
-	g_free(params);
-
-	return dst;
-}
-
 ADDGTKPREFIX(int, showMainWin())
 {
 	GtkBuilder* builder = gtk_builder_new();
@@ -166,21 +274,9 @@ ADDGTKPREFIX(int, showMainWin())
 	
 	GObject* butAllItems = gtk_builder_get_object(builder, "butAllItems");
 	
-	char** cats = NULL;
-	int numCats = getCatagories(&cats);
-	for(int i = 0; i < numCats; i++)
-	{
-		GObject* but = g_object_clone(butAllItems);
-		gtk_button_set_label((GtkButton*)but, cats[i]);
-		gtk_container_add(GTK_CONTAINER(boxCats), (GtkWidget*)but);
-		gtk_widget_show((GtkWidget*)but);
-		free(cats[i]);
-	}
-	free(cats);
+	populateCatagories(butAllItems, boxCats);
 	
-	(void) boxTags;
-	
-	printItemJSON();
+	populateTags(butAllItems, boxTags);
 	
 	gtk_main();
 	return 0;
