@@ -18,6 +18,10 @@ static char* mainXML = ""
 #include "xml/gtkmain.pxml"
 ;
 
+#ifdef DEBUG
+	extern char pass[100];
+#endif
+
 struct gtkAskPassData
 {
 	GObject* pass;
@@ -36,11 +40,20 @@ static void ap_destroy(GtkWidget* widget, gpointer data)
 	g_value_init(&txt, G_TYPE_STRING);
 	g_object_get_property(gapd->pass, "text", &txt);
 	const char* entryText = g_value_get_string(&txt);
+//	hexdump("ap\n", entryText, strlen(entryText)+1);
 	if(gapd->out)
 	{
 		*(gapd->out) = malloc(strlen(entryText)+1);
 		if(*(gapd->out))
 			strcpy(*(gapd->out), entryText);
+		#ifdef DEBUG
+			if(strlen(entryText) == 0)
+			{
+				free(*(gapd->out));
+				*(gapd->out) = malloc(100);
+				strcpy(*(gapd->out), pass);
+			}
+		#endif
 	}
 	g_value_unset(&txt);
 	gtk_main_quit();
@@ -149,14 +162,7 @@ ADDGTKPREFIX(int, showMainWin())
 	g_signal_connect(window, "destroy", G_CALLBACK(destroy), NULL);
 
 	GObject* boxCats = gtk_builder_get_object(builder, "boxCatagoryList");
-	
-	GtkWidget* rule = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-	gtk_container_add(GTK_CONTAINER(boxCats), rule);
-	gtk_widget_show(rule);
-	GtkWidget* lbl = gtk_label_new(NULL);
-	gtk_label_set_markup((GtkLabel*)lbl, "<b><small>Categories</small></b>");
-	gtk_container_add(GTK_CONTAINER(boxCats), lbl);
-	gtk_widget_show(lbl);
+	GObject* boxTags = gtk_builder_get_object(builder, "boxTagList");
 	
 	GObject* butAllItems = gtk_builder_get_object(builder, "butAllItems");
 	
@@ -172,13 +178,9 @@ ADDGTKPREFIX(int, showMainWin())
 	}
 	free(cats);
 	
-	rule = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-	gtk_container_add(GTK_CONTAINER(boxCats), rule);
-	gtk_widget_show(rule);
-	lbl = gtk_label_new(NULL);
-	gtk_label_set_markup((GtkLabel*)lbl, "<b><small>Tags</small></b>");
-	gtk_container_add(GTK_CONTAINER(boxCats), lbl);
-	gtk_widget_show(lbl);
+	(void) boxTags;
+	
+	printItemJSON();
 	
 	gtk_main();
 	return 0;

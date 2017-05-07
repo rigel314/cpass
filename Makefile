@@ -1,6 +1,6 @@
 GUI = gtk
-FLAGS = -std=gnu11 -O0 -ggdb3 -march=native -Wall -Wno-pointer-sign -Wno-switch -Werror -DMAKEDEF
-TFLAGS = ${FLAGS} -DTESTS -DMAKEDEF
+FLAGS = -DDEBUG -ggdb3 -O0 -std=gnu11 -march=native -Wall -Wno-pointer-sign -Wno-switch -Werror
+TFLAGS = ${FLAGS} -DTESTS
 LFLAGS = -lsqlite3 -ljson-c -lssl -lcrypto
 builddir = build
 objects = ${builddir}/main.o ${builddir}/sql.o ${builddir}/util.o ${builddir}/crypt.o ${builddir}/1pass.o ${builddir}/gui.o

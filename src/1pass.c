@@ -189,7 +189,7 @@ int decryptKey(char**ptJSON, char* ctJSON)
 
 int getKeyByUUID(char** out, const char* uuid)
 {
-	dbgLog("%s\n", uuid);
+//	dbgLog("%s\n", uuid);
 
 	LLforeach(struct keys*, ptr, keys)
 	{

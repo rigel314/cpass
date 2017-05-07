@@ -21,6 +21,7 @@
 char accountKey[100] = ""; // get from user
 char email[] = "pi.rubiks@gmail.com"; // get from user
 char id[] = "ASWWYB";
+char pass[100] = "aoeu things";
 
 #ifndef TESTS
 int main(int argc, char** argv)
@@ -28,7 +29,6 @@ int main(int argc, char** argv)
 	if(argc != 2)
 		return 1;
 	
-	char pass[100] = "aoeu things";
 //	char salt[100] = ""; // get from keysets
 	FILE* fp = fopen("./enc/1passwordKey.txt", "r");
 	if(fp)

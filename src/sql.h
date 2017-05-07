@@ -11,7 +11,7 @@
 #include <sqlite3.h>
 
 int countItems(char* file);
-int printItemJSON(char* file, char* symkey);
+int printItemJSON();
 int openDB(char* file);
 int getMUKsalt(char** p2s, char** alg, int* p2c);
 int findKid(char** ctJSON, const char* uuid);

@@ -63,7 +63,7 @@ int countItems(char* file)
 	return counter;
 }
 
-int printItemJSON(char* file, char* symkey)
+int printItemJSON()
 {
 	int retval;
 	sqlite3_stmt* query;
@@ -78,7 +78,6 @@ int printItemJSON(char* file, char* symkey)
 		return -1;
 	}
 	
-	printf("items:\n");
 	int counter=0;
 	while((retval = sqlite3_step(query)) == SQLITE_ROW)
 	{
@@ -90,16 +89,26 @@ int printItemJSON(char* file, char* symkey)
 		int ret = decryptItem(&pt, overview);
 		
 		if(pt)
-			hexdump("", pt, strlen(pt));
+		{
+			struct json_object* jobj = json_tokener_parse(pt);
+			json_object_object_foreach(jobj, name, val)
+			{
+				if(!strcmp("tags", name))
+				{
+					struct json_object* tags;
+					json_object_object_get_ex(jobj, name, &tags);
+					dbgLog("%s\n", json_object_get_string(tags));
+				}
+			}
+		}
 		
-		printf("\n");
-		
+		free(pt);
+
 		if(!ret)
 		{
 			retval = SQLITE_DONE;
 			break;
 		}
-		free(pt);
 	}
 	if(retval != SQLITE_DONE)
 	{
