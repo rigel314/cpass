@@ -12,91 +12,13 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <string.h>
+#include <strings.h>
 #include "util.h"
 #include "crypt.h"
 #include "sql.h"
 #include "1pass.h"
 
 sqlite3* dbHandle = NULL;
-
-int getTags(char*** tags)
-{
-	int retval;
-	sqlite3_stmt* query;
-	char* queryFmt;
-	
-	queryFmt = "SELECT overview FROM items ORDER BY id;";
-	
-	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
-	if(retval != SQLITE_OK)
-	{
-		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
-		return 0;
-	}
-	
-	int counter=0;
-	*tags = NULL;
-	while((retval = sqlite3_step(query)) == SQLITE_ROW)
-	{
-		char* overview = (char*) sqlite3_column_text(query, 0);
-		char* pt = NULL;
-		int ret = decryptItem(&pt, overview);
-		
-		if(pt && ret)
-		{
-			struct json_object* jobj = json_tokener_parse(pt);
-			json_object_object_foreach(jobj, name, val)
-			{
-				if(!strcmp("tags", name) && json_object_is_type(val, json_type_array))
-				{
-					int len = json_object_array_length(val);
-					for(int i = 0; i < len; i++)
-					{
-						struct json_object* arr = json_object_array_get_idx(val, i);
-						const char* rowTag = json_object_get_string(arr);
-						int new = 1;
-						for(int j = 0; j < counter; j++)
-						{
-							if(!strcmp(rowTag, (*tags)[j]))
-							{
-								new = 0;
-								break;
-							}
-						}
-						if(!new)
-							continue;
-						
-						counter++;
-						char** tagsBak = *tags;
-						*tags = realloc(*tags, sizeof(char*) * counter);
-						if(!*tags)
-						{
-							counter--;
-							*tags = tagsBak;
-							break;
-						}
-						(*tags)[counter-1] = malloc(strlen(rowTag) + 1);
-						if(!(*tags)[counter-1])
-						{
-							counter--;
-							break;
-						}
-						strcpy((*tags)[counter-1], rowTag);
-					}
-				}
-			}
-			free(pt);
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	sqlite3_finalize(query);
-
-	return counter;
-}
 
 int openDB(char* file)
 {
@@ -443,4 +365,214 @@ int getCatagories(struct catagory** names)
 	sqlite3_finalize(query);
 	
 	return rowCount;
+}
+
+static int sortTags(const void* a, const void* b)
+{
+	char* ain = *(char**)a;
+	char* bin = *(char**)b;
+	
+	return strcasecmp(ain, bin);
+}
+
+int getTags(char*** tags)
+{
+	int retval;
+	sqlite3_stmt* query;
+	char* queryFmt;
+	
+	queryFmt = "SELECT overview FROM items ORDER BY id;";
+	
+	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
+	if(retval != SQLITE_OK)
+	{
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
+		return 0;
+	}
+	
+	int counter=0;
+	*tags = NULL;
+	while((retval = sqlite3_step(query)) == SQLITE_ROW)
+	{
+		char* overview = (char*) sqlite3_column_text(query, 0);
+		char* pt = NULL;
+		int ret = decryptItem(&pt, overview);
+		
+		if(pt && ret)
+		{
+			struct json_object* jobj = json_tokener_parse(pt);
+			json_object_object_foreach(jobj, name, val)
+			{
+				if(!strcmp("tags", name) && json_object_is_type(val, json_type_array))
+				{
+					int len = json_object_array_length(val);
+					for(int i = 0; i < len; i++)
+					{
+						struct json_object* arr = json_object_array_get_idx(val, i);
+						const char* rowTag = json_object_get_string(arr);
+						int new = 1;
+						for(int j = 0; j < counter; j++)
+						{
+							if(!strcmp(rowTag, (*tags)[j]))
+							{
+								new = 0;
+								break;
+							}
+						}
+						if(!new)
+							continue;
+						
+						counter++;
+						char** tagsBak = *tags;
+						*tags = realloc(*tags, sizeof(char*) * counter);
+						if(!*tags)
+						{
+							counter--;
+							*tags = tagsBak;
+							break;
+						}
+						(*tags)[counter-1] = malloc(strlen(rowTag) + 1);
+						if(!(*tags)[counter-1])
+						{
+							counter--;
+							break;
+						}
+						strcpy((*tags)[counter-1], rowTag);
+					}
+				}
+			}
+			json_object_put(jobj);
+			free(pt);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	sqlite3_finalize(query);
+
+	if(counter > 0)
+		qsort(*tags, counter, sizeof(char**), sortTags);
+	
+	return counter;
+}
+
+static int sortItems(const void* a, const void* b)
+{
+	struct item* ain = (struct item*)a;
+	struct item* bin = (struct item*)b;
+	
+	return strcasecmp(ain->name, bin->name);
+}
+
+int getItems(struct item** items)
+{
+	int retval;
+	sqlite3_stmt* query;
+	char* queryFmt;
+	
+	queryFmt = "SELECT overview,id FROM items WHERE trashed==0;";
+	
+	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
+	if(retval != SQLITE_OK)
+	{
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
+		return 0;
+	}
+	
+	*items = NULL;
+	int rowCount = 0;
+	while((retval = sqlite3_step(query)) == SQLITE_ROW)
+	{
+		rowCount++;
+		struct item* namesBak = *items;
+		*items = realloc(*items, rowCount * sizeof(struct catagory));
+		if(!*items)
+		{
+			*items = namesBak;
+			rowCount--;
+			break;
+		}
+		struct item* item = (*items)+(rowCount - 1);
+
+		char* overview = (char*) sqlite3_column_text(query, 0);
+		char* pt = NULL;
+		int ret = decryptItem(&pt, overview);
+		if(pt && ret)
+		{
+			struct json_object* jobj = json_tokener_parse(pt);
+			json_object_object_foreach(jobj, name, val)
+			{
+				if(!strcmp("title", name) && json_object_is_type(val, json_type_string))
+				{
+					const char* title = json_object_get_string(val);
+					item->name = malloc(strlen(title) + 1);
+					if(!item->name)
+					{
+						rowCount--;
+						break;
+					}
+					memcpy(item->name, title, strlen(title) + 1);
+					
+					int id = sqlite3_column_int(query, 1);
+					item->id = id;
+				}
+			}
+			json_object_put(jobj);
+			free(pt);
+		}
+		else
+		{
+			rowCount--;
+			break;
+		}
+	}
+	
+	sqlite3_finalize(query);
+	
+	if(rowCount>0)
+		qsort(*items, rowCount, sizeof(struct item), sortItems);
+	
+	return rowCount;
+}
+
+int getItemByID(char** ptJSON, int id)
+{
+	int retval;
+	sqlite3_stmt* query;
+	char* queryFmt;
+	
+	queryFmt = "SELECT details FROM items WHERE id==?001;";
+	
+	retval = sqlite3_prepare_v2(dbHandle, queryFmt, -1, &query, NULL);
+	if(retval != SQLITE_OK)
+	{
+		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
+		return 0;
+	}
+	
+	retval = sqlite3_bind_int(query, 1, id);
+	if(retval != SQLITE_OK)
+	{
+		dbgLog("sqlite3_bind_int() error: %d\n", retval);
+		return 0;
+	}
+	
+	retval = sqlite3_step(query);
+	if(retval != SQLITE_ROW)
+	{
+		dbgLog("sqlite3_step() error: %d\n", retval);
+		return 0;
+	}
+
+	char* details = (char*) sqlite3_column_text(query, 0);
+	*ptJSON = NULL;
+	int ret = decryptItem(ptJSON, details);
+	if(!(*ptJSON && ret))
+		dbgLog("decryptItem() failed decrypting item.\n");
+	
+	sqlite3_finalize(query);
+	
+	return 1;
 }

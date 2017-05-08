@@ -34,6 +34,13 @@ struct catagoryButData
 	GObject* box;
 };
 
+struct itemButData
+{
+	int id;
+	GObject* itemBox;
+	GObject* dataGrid;
+};
+
 // Internal GUI functions
 static void populateCatagories(GObject* butAllItems, GObject* boxCats);
 static void populateTags(GObject* butAllItems, GObject* boxTags);
@@ -99,6 +106,21 @@ static void catagoryBut_Destroy(GtkButton* but, gpointer data)
 {
 	free(data);
 }
+static void itemBut_Click(GtkButton* but, gpointer data)
+{
+	struct itemButData* x = data;
+	
+	gtk_container_foreach(GTK_CONTAINER(x->dataGrid), deleteBut, NULL);
+	
+	char* ptJSON;
+	getItemByID(&ptJSON, x->id);
+	
+	dbgLog("%s\n", ptJSON);
+}
+static void itemBut_Destroy(GtkButton* but, gpointer data)
+{
+	free(data);
+}
 // End Callbacks
 
 // Internal GUI functions
@@ -158,6 +180,43 @@ static void populateTags(GObject* butAllItems, GObject* boxTags)
 		free(tags[i]);
 	}
 	free(tags);
+}
+
+static void populateTitles(GObject* butAllItems, GObject* boxItems, GObject* dataGrid)
+{
+	// destroy all existing children in boxItems
+	gtk_container_foreach(GTK_CONTAINER(boxItems), deleteBut, NULL);
+
+	// create children in boxItems for each item
+	struct item* items;
+	int numItems = getItems(&items);
+	
+	for(int i = 0; i < numItems; i++)
+	{
+		GObject* but = g_object_clone(butAllItems);
+		if(!but)
+			break;
+		
+		gtk_button_set_label((GtkButton*)but, items[i].name);
+		
+		struct itemButData* data = malloc(sizeof(struct itemButData));
+		if(!data)
+		{
+			gtk_widget_destroy((GtkWidget*)but);
+			break;
+		}
+		data->id = items[i].id;
+		data->itemBox = boxItems;
+		data->dataGrid = dataGrid;
+		g_signal_connect(but, "clicked", G_CALLBACK(itemBut_Click), data);
+		g_signal_connect(but, "destroy", G_CALLBACK(itemBut_Destroy), data);
+		
+		gtk_container_add(GTK_CONTAINER(boxItems), (GtkWidget*)but);
+		gtk_widget_show((GtkWidget*)but);
+
+		free(items[i].name);
+	}
+	free(items);
 }
 
 static void hilightBut(GtkWidget* but, gpointer data)
@@ -271,12 +330,16 @@ ADDGTKPREFIX(int, showMainWin())
 
 	GObject* boxCats = gtk_builder_get_object(builder, "boxCatagoryList");
 	GObject* boxTags = gtk_builder_get_object(builder, "boxTagList");
+	GObject* boxItems = gtk_builder_get_object(builder, "boxItemList");
+	GObject* gridData = gtk_builder_get_object(builder, "gridData");
 	
 	GObject* butAllItems = gtk_builder_get_object(builder, "butAllItems");
 	
 	populateCatagories(butAllItems, boxCats);
 	
 	populateTags(butAllItems, boxTags);
+	
+	populateTitles(butAllItems, boxItems, gridData);
 	
 	gtk_main();
 	return 0;

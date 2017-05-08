@@ -16,11 +16,20 @@ struct catagory
 	char* name;
 };
 
-int getTags();
+struct item
+{
+	int id;
+	char* name;
+};
+
+
 int openDB(char* file);
 int getMUKsalt(char** p2s, char** alg, int* p2c);
 int findKid(char** ctJSON, const char* uuid);
 int getCatagories(struct catagory** names);
+int getTags();
+int getItems(struct item** items);
+int getItemByID(char** ptJSON, int id);
 
 extern sqlite3* dbHandle;
 
