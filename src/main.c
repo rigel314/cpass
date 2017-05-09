@@ -17,6 +17,8 @@
 // TODO: Add some kind of UI
 // TODO: Connect to browser extension
 // TODO: check json tokener parsing
+// TODO: check json_object_object_get_ex() calls for failure
+// TODO: add openssl_cleanse() functions after every place decrypted data is done. And when password is entered.
 
 char accountKey[100] = ""; // get from user
 char email[] = "pi.rubiks@gmail.com"; // get from user
@@ -72,7 +74,7 @@ int main(int argc, char** argv)
 	
 	showMainWin();
 
-//	printItemJSON(argv[1], NULL);
+	OPENSSL_cleanse(pass, 100);
 	
 	return 0;
 }

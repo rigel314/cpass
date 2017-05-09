@@ -9,6 +9,7 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 #include <string.h>
+#include <json-c/json.h>
 #include "../sql.h"
 
 static char* askpassXML = ""
@@ -106,16 +107,103 @@ static void catagoryBut_Destroy(GtkButton* but, gpointer data)
 {
 	free(data);
 }
-static void itemBut_Click(GtkButton* but, gpointer data)
+static void copyBut_Click(GtkButton* but, gpointer data)
+{
+	;
+}
+static void copyBut_Destroy(GtkButton* but, gpointer data)
+{
+//	free(data);
+}
+static void showBut_Click(GtkButton* but, gpointer data)
+{
+	GtkWidget* txt = (GtkWidget*)data;
+	
+	GValue curName = G_VALUE_INIT;
+	g_value_init(&curName, G_TYPE_STRING);
+	g_object_get_property((GObject*)but, "label", &curName);
+	
+	int show = !strcmp("Show", g_value_get_string(&curName));
+	
+	GValue visibility = G_VALUE_INIT;
+	g_value_init(&visibility, G_TYPE_BOOLEAN);
+	g_value_set_boolean(&visibility, (show)?TRUE:FALSE);
+	g_object_set_property((GObject*)txt, "visibility", &visibility);
+	
+	GValue name = G_VALUE_INIT;
+	g_value_init(&name, G_TYPE_STRING);
+	g_value_set_string(&name, (show)?"Hide":"Show");
+	g_object_set_property((GObject*)but, "label", &name);
+}
+static void showBut_Destroy(GtkButton* but, gpointer data)
+{
+//	free(data);
+}
+static void itemBut_Click(GtkButton* button, gpointer data)
 {
 	struct itemButData* x = data;
 	
 	gtk_container_foreach(GTK_CONTAINER(x->dataGrid), deleteBut, NULL);
 	
+	GtkWidget* title = gtk_label_new(gtk_button_get_label(button));
+	gtk_widget_show(title);
+	gtk_grid_attach((GtkGrid*)x->dataGrid, title, 0, 0, 4, 1);
+	
 	char* ptJSON;
 	getItemByID(&ptJSON, x->id);
 	
-	dbgLog("%s\n", ptJSON);
+	struct json_object* jobj = json_tokener_parse(ptJSON);
+	struct json_object* val;
+	if(json_object_object_get_ex(jobj, "fields", &val) && json_object_is_type(val, json_type_array))
+	{
+		int len = json_object_array_length(val);
+		int j = 1;
+		for(int i = 0; i < len; i++)
+		{
+			struct json_object* arrVal = json_object_array_get_idx(val, i);
+			struct json_object* des;
+			struct json_object* desVal;
+			struct json_object* desType;
+			if(json_object_object_get_ex(arrVal, "designation", &des) && json_object_object_get_ex(arrVal, "value", &desVal) && json_object_object_get_ex(arrVal, "type", &desType))
+			{
+				GtkWidget* lbl = gtk_label_new(json_object_get_string(des));
+				
+				GtkWidget* txt = gtk_entry_new();
+				gtk_entry_set_text((GtkEntry*)txt, json_object_get_string(desVal));
+				GValue gvfalse = G_VALUE_INIT;
+				g_value_init(&gvfalse, G_TYPE_BOOLEAN);
+				g_value_set_boolean(&gvfalse, FALSE);
+				g_object_set_property((GObject*)txt, "editable", &gvfalse);
+				GValue width = G_VALUE_INIT;
+				g_value_init(&width, G_TYPE_INT);
+				g_value_set_int(&width, 30);
+				g_object_set_property((GObject*)txt, "width-chars", &width);
+				if(!strcmp("P", json_object_get_string(desType)))
+				{
+					g_object_set_property((GObject*)txt, "visibility", &gvfalse);
+					GtkWidget* butsh = gtk_button_new_with_label("Show");
+					g_signal_connect(butsh, "clicked", G_CALLBACK(showBut_Click), txt);
+					g_signal_connect(butsh, "destroy", G_CALLBACK(showBut_Destroy), NULL);
+					gtk_widget_show(butsh);
+					gtk_grid_attach((GtkGrid*)x->dataGrid, butsh, 3, j, 1, 1);
+				}
+				
+				GtkWidget* butcp = gtk_button_new_with_label("Copy");
+				g_signal_connect(butcp, "clicked", G_CALLBACK(copyBut_Click), txt);
+				g_signal_connect(butcp, "destroy", G_CALLBACK(copyBut_Destroy), NULL);
+				
+				gtk_widget_show(lbl);
+				gtk_widget_show(txt);
+				gtk_widget_show(butcp);
+				
+				gtk_grid_attach((GtkGrid*)x->dataGrid, lbl, 0, j, 1, 1);
+				gtk_grid_attach((GtkGrid*)x->dataGrid, txt, 1, j, 1, 1);
+				gtk_grid_attach((GtkGrid*)x->dataGrid, butcp, 2, j, 1, 1);
+				j++;
+			}
+		}
+	}
+	json_object_put(jobj);
 }
 static void itemBut_Destroy(GtkButton* but, gpointer data)
 {
