@@ -109,7 +109,11 @@ static void catagoryBut_Destroy(GtkButton* but, gpointer data)
 }
 static void copyBut_Click(GtkButton* but, gpointer data)
 {
-	;
+	GtkClipboard* cb = gtk_clipboard_get(gdk_atom_intern("CLIPBOARD", TRUE));
+	if(!cb)
+		return;
+	
+	gtk_clipboard_set_text(cb, gtk_entry_get_text((GtkEntry*)data), -1);
 }
 static void copyBut_Destroy(GtkButton* but, gpointer data)
 {
@@ -152,19 +156,24 @@ static void itemBut_Click(GtkButton* button, gpointer data)
 	char* ptJSON;
 	getItemByID(&ptJSON, x->id);
 	
+//	dbgLog("%s\n", ptJSON);
+	
 	struct json_object* jobj = json_tokener_parse(ptJSON);
 	struct json_object* val;
+
+	int rowNum = 1;
+	
+	// Process main fields
 	if(json_object_object_get_ex(jobj, "fields", &val) && json_object_is_type(val, json_type_array))
 	{
 		int len = json_object_array_length(val);
-		int j = 1;
 		for(int i = 0; i < len; i++)
 		{
 			struct json_object* arrVal = json_object_array_get_idx(val, i);
 			struct json_object* des;
 			struct json_object* desVal;
 			struct json_object* desType;
-			if(json_object_object_get_ex(arrVal, "designation", &des) && json_object_object_get_ex(arrVal, "value", &desVal) && json_object_object_get_ex(arrVal, "type", &desType))
+			if(json_object_object_get_ex(arrVal, "designation", &des) && json_object_object_get_ex(arrVal, "value", &desVal))
 			{
 				GtkWidget* lbl = gtk_label_new(json_object_get_string(des));
 				
@@ -178,14 +187,14 @@ static void itemBut_Click(GtkButton* button, gpointer data)
 				g_value_init(&width, G_TYPE_INT);
 				g_value_set_int(&width, 30);
 				g_object_set_property((GObject*)txt, "width-chars", &width);
-				if(!strcmp("P", json_object_get_string(desType)))
+				if(json_object_object_get_ex(arrVal, "type", &desType) && !strcmp("P", json_object_get_string(desType)))
 				{
 					g_object_set_property((GObject*)txt, "visibility", &gvfalse);
 					GtkWidget* butsh = gtk_button_new_with_label("Show");
 					g_signal_connect(butsh, "clicked", G_CALLBACK(showBut_Click), txt);
 					g_signal_connect(butsh, "destroy", G_CALLBACK(showBut_Destroy), NULL);
 					gtk_widget_show(butsh);
-					gtk_grid_attach((GtkGrid*)x->dataGrid, butsh, 3, j, 1, 1);
+					gtk_grid_attach((GtkGrid*)x->dataGrid, butsh, 3, rowNum, 1, 1);
 				}
 				
 				GtkWidget* butcp = gtk_button_new_with_label("Copy");
@@ -196,13 +205,153 @@ static void itemBut_Click(GtkButton* button, gpointer data)
 				gtk_widget_show(txt);
 				gtk_widget_show(butcp);
 				
-				gtk_grid_attach((GtkGrid*)x->dataGrid, lbl, 0, j, 1, 1);
-				gtk_grid_attach((GtkGrid*)x->dataGrid, txt, 1, j, 1, 1);
-				gtk_grid_attach((GtkGrid*)x->dataGrid, butcp, 2, j, 1, 1);
-				j++;
+				gtk_grid_attach((GtkGrid*)x->dataGrid, lbl, 0, rowNum, 1, 1);
+				gtk_grid_attach((GtkGrid*)x->dataGrid, txt, 1, rowNum, 1, 1);
+				gtk_grid_attach((GtkGrid*)x->dataGrid, butcp, 2, rowNum, 1, 1);
+				
+				rowNum++;
 			}
 		}
 	}
+	
+	// Process sections
+	if(json_object_object_get_ex(jobj, "sections", &val) && json_object_is_type(val, json_type_array))
+	{
+		int len = json_object_array_length(val);
+		for(int i = 0; i < len; i++)
+		{
+			struct json_object* secVal = json_object_array_get_idx(val, i);
+			struct json_object* secName;
+			if(json_object_object_get_ex(secVal, "title", &secName))
+			{
+				GtkWidget* hr = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+				
+				GtkWidget* lbl = gtk_label_new(json_object_get_string(secName));
+				
+				gtk_widget_show(hr);
+				gtk_widget_show(lbl);
+				
+				gtk_grid_attach((GtkGrid*)x->dataGrid, hr, 0, rowNum, 4, 1);
+				gtk_grid_attach((GtkGrid*)x->dataGrid, lbl, 0, rowNum+1, 1, 1);
+				rowNum++;
+				rowNum++;
+			}
+			
+			struct json_object* secFields;
+			if(json_object_object_get_ex(secVal, "fields", &secFields) && json_object_is_type(secFields, json_type_array))
+			{
+				int len = json_object_array_length(secFields);
+				for(int j = 0; j < len; j++)
+				{
+					struct json_object* arrVal = json_object_array_get_idx(secFields, j);
+					struct json_object* des;
+					struct json_object* desVal;
+					struct json_object* desType;
+					if(json_object_object_get_ex(arrVal, "t", &des) && json_object_object_get_ex(arrVal, "v", &desVal) && json_object_object_get_ex(arrVal, "k", &desType))
+					{
+						GtkWidget* lbl = gtk_label_new(json_object_get_string(des));
+						
+						GtkWidget* txt = gtk_entry_new();
+						gtk_entry_set_text((GtkEntry*)txt, json_object_get_string(desVal));
+						GValue gvfalse = G_VALUE_INIT;
+						g_value_init(&gvfalse, G_TYPE_BOOLEAN);
+						g_value_set_boolean(&gvfalse, FALSE);
+						g_object_set_property((GObject*)txt, "editable", &gvfalse);
+						GValue width = G_VALUE_INIT;
+						g_value_init(&width, G_TYPE_INT);
+						g_value_set_int(&width, 30);
+						g_object_set_property((GObject*)txt, "width-chars", &width);
+						if(!strcmp("concealed", json_object_get_string(desType)))
+						{
+							g_object_set_property((GObject*)txt, "visibility", &gvfalse);
+							GtkWidget* butsh = gtk_button_new_with_label("Show");
+							g_signal_connect(butsh, "clicked", G_CALLBACK(showBut_Click), txt);
+							g_signal_connect(butsh, "destroy", G_CALLBACK(showBut_Destroy), NULL);
+							gtk_widget_show(butsh);
+							gtk_grid_attach((GtkGrid*)x->dataGrid, butsh, 3, rowNum, 1, 1);
+						}
+						
+						GtkWidget* butcp = gtk_button_new_with_label("Copy");
+						g_signal_connect(butcp, "clicked", G_CALLBACK(copyBut_Click), txt);
+						g_signal_connect(butcp, "destroy", G_CALLBACK(copyBut_Destroy), NULL);
+						
+						gtk_widget_show(lbl);
+						gtk_widget_show(txt);
+						gtk_widget_show(butcp);
+						
+						gtk_grid_attach((GtkGrid*)x->dataGrid, lbl, 0, rowNum, 1, 1);
+						gtk_grid_attach((GtkGrid*)x->dataGrid, txt, 1, rowNum, 1, 1);
+						gtk_grid_attach((GtkGrid*)x->dataGrid, butcp, 2, rowNum, 1, 1);
+						
+						rowNum++;
+					}
+				}
+			}
+		}
+	}
+	
+	// Process password-only items
+	if(json_object_object_get_ex(jobj, "password", &val))
+	{
+		GtkWidget* lbl = gtk_label_new("Password");
+
+		GtkWidget* txt = gtk_text_view_new();
+		GtkTextBuffer* buf = gtk_text_view_get_buffer((GtkTextView*)txt);
+		gtk_text_buffer_set_text(buf, json_object_get_string(val), -1);
+		GValue gvfalse = G_VALUE_INIT;
+		g_value_init(&gvfalse, G_TYPE_BOOLEAN);
+		g_value_set_boolean(&gvfalse, FALSE);
+		g_object_set_property((GObject*)txt, "editable", &gvfalse);
+		GValue width = G_VALUE_INIT;
+		g_value_init(&width, G_TYPE_INT);
+		g_value_set_int(&width, 30);
+		g_object_set_property((GObject*)txt, "width-chars", &width);
+		g_object_set_property((GObject*)txt, "visibility", &gvfalse);
+
+		GtkWidget* butcp = gtk_button_new_with_label("Copy");
+		g_signal_connect(butcp, "clicked", G_CALLBACK(copyBut_Click), txt);
+		g_signal_connect(butcp, "destroy", G_CALLBACK(copyBut_Destroy), NULL);
+		
+		GtkWidget* butsh = gtk_button_new_with_label("Show");
+		g_signal_connect(butsh, "clicked", G_CALLBACK(showBut_Click), txt);
+		g_signal_connect(butsh, "destroy", G_CALLBACK(showBut_Destroy), NULL);
+
+		gtk_widget_show(txt);
+		gtk_widget_show(lbl);
+		gtk_widget_show(butcp);
+		gtk_widget_show(butsh);
+
+		gtk_grid_attach((GtkGrid*)x->dataGrid, lbl, 0, rowNum, 1, 1);
+		gtk_grid_attach((GtkGrid*)x->dataGrid, txt, 1, rowNum, 3, 1);
+		gtk_grid_attach((GtkGrid*)x->dataGrid, butcp, 2, rowNum, 1, 1);
+		gtk_grid_attach((GtkGrid*)x->dataGrid, butsh, 3, rowNum, 1, 1);
+		
+		rowNum++;
+	}
+
+	// Process notes
+	if(json_object_object_get_ex(jobj, "notesPlain", &val) && json_object_get_string_len(val) > 0)
+	{
+		GtkWidget* lbl = gtk_label_new("Secure note:");
+
+		GtkWidget* txt = gtk_text_view_new();
+		GtkTextBuffer* buf = gtk_text_view_get_buffer((GtkTextView*)txt);
+		gtk_text_buffer_set_text(buf, json_object_get_string(val), -1);
+		GValue gvfalse = G_VALUE_INIT;
+		g_value_init(&gvfalse, G_TYPE_BOOLEAN);
+		g_value_set_boolean(&gvfalse, FALSE);
+		g_object_set_property((GObject*)txt, "editable", &gvfalse);
+
+		gtk_widget_show(txt);
+		gtk_widget_show(lbl);
+
+		gtk_grid_attach((GtkGrid*)x->dataGrid, lbl, 0, rowNum, 1, 1);
+		gtk_grid_attach((GtkGrid*)x->dataGrid, txt, 1, rowNum+1, 3, 1);
+		
+		rowNum++;
+		rowNum++;
+	}
+
 	json_object_put(jobj);
 }
 static void itemBut_Destroy(GtkButton* but, gpointer data)
