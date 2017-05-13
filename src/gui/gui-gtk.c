@@ -295,18 +295,17 @@ static void itemBut_Click(GtkButton* button, gpointer data)
 	{
 		GtkWidget* lbl = gtk_label_new("Password");
 
-		GtkWidget* txt = gtk_text_view_new();
-		GtkTextBuffer* buf = gtk_text_view_get_buffer((GtkTextView*)txt);
-		gtk_text_buffer_set_text(buf, json_object_get_string(val), -1);
+		GtkWidget* txt = gtk_entry_new();
+		gtk_entry_set_text((GtkEntry*)txt, json_object_get_string(val));
 		GValue gvfalse = G_VALUE_INIT;
 		g_value_init(&gvfalse, G_TYPE_BOOLEAN);
 		g_value_set_boolean(&gvfalse, FALSE);
 		g_object_set_property((GObject*)txt, "editable", &gvfalse);
+		g_object_set_property((GObject*)txt, "visibility", &gvfalse);
 		GValue width = G_VALUE_INIT;
 		g_value_init(&width, G_TYPE_INT);
 		g_value_set_int(&width, 30);
 		g_object_set_property((GObject*)txt, "width-chars", &width);
-		g_object_set_property((GObject*)txt, "visibility", &gvfalse);
 
 		GtkWidget* butcp = gtk_button_new_with_label("Copy");
 		g_signal_connect(butcp, "clicked", G_CALLBACK(copyBut_Click), txt);
@@ -322,7 +321,7 @@ static void itemBut_Click(GtkButton* button, gpointer data)
 		gtk_widget_show(butsh);
 
 		gtk_grid_attach((GtkGrid*)x->dataGrid, lbl, 0, rowNum, 1, 1);
-		gtk_grid_attach((GtkGrid*)x->dataGrid, txt, 1, rowNum, 3, 1);
+		gtk_grid_attach((GtkGrid*)x->dataGrid, txt, 1, rowNum, 1, 1);
 		gtk_grid_attach((GtkGrid*)x->dataGrid, butcp, 2, rowNum, 1, 1);
 		gtk_grid_attach((GtkGrid*)x->dataGrid, butsh, 3, rowNum, 1, 1);
 		
