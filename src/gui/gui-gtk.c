@@ -5,12 +5,12 @@
  *      Author: cody
  */
 
-#include "../gui.h"
+#include "../main/gui.h"
 #include <gtk/gtk.h>
 #include <stdlib.h>
 #include <string.h>
 #include <json-c/json.h>
-#include "../sql.h"
+#include "../main/sql.h"
 
 static char* askpassXML = ""
 #include "xml/gtkaskpass.pxml"

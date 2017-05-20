@@ -3,7 +3,7 @@ FLAGS = -DDEBUG -ggdb3 -O0 -std=gnu11 -march=native -Wall -Wno-pointer-sign -Wno
 TFLAGS = ${FLAGS} -DTESTS
 LFLAGS = -lsqlite3 -ljson-c -lssl -lcrypto
 builddir = build
-objects = ${builddir}/main.o ${builddir}/sql.o ${builddir}/util.o ${builddir}/crypt.o ${builddir}/1pass.o ${builddir}/gui.o
+objects = ${builddir}/main/main.o ${builddir}/main/sql.o ${builddir}/main/util.o ${builddir}/main/crypt.o ${builddir}/main/1pass.o ${builddir}/main/gui.o
 xmlobjects =
 ifneq (,$(findstring gtk,$(GUI)))
 	gobjects += ${builddir}/gui/gui-gtk.o
@@ -35,23 +35,27 @@ ${builddir}/.file:
 	mkdir ${builddir}
 	touch ${builddir}/.file
 
-${builddir}/gui/.file:
+${builddir}/gui/.file: ${builddir}/.file
 	mkdir ${builddir}/gui
 	touch ${builddir}/gui/.file
+
+${builddir}/main/.file: ${builddir}/.file
+	mkdir ${builddir}/main
+	touch ${builddir}/main/.file
 
 src/gui/xml/%.pxml: src/gui/xml/%.xml Makefile
 	src/gui/xml/xmlpreprocess.sh $< $@
 
-${builddir}/gui/%-test.o: src/gui/%.c Makefile $(wildcard src/*.h) $(wildcard src/gui/*.h) ${builddir}/gui/.file ${xmlobjects}
+${builddir}/gui/%-test.o: src/gui/%.c Makefile $(wildcard src/main/*.h) $(wildcard src/gui/*.h) ${builddir}/gui/.file ${xmlobjects}
 	${CC} ${FLAGS} ${gINCFLAGS} -c -o $@ $<
 
-${builddir}/gui/%.o: src/gui/%.c Makefile $(wildcard src/*.h) $(wildcard src/gui/*.h) ${builddir}/gui/.file ${xmlobjects}
+${builddir}/gui/%.o: src/gui/%.c Makefile $(wildcard src/main/*.h) $(wildcard src/gui/*.h) ${builddir}/gui/.file ${xmlobjects}
 	${CC} ${FLAGS} ${gINCFLAGS} -c -o $@ $<
 
-${builddir}/%-test.o: src/%.c Makefile $(wildcard src/*.h) ${builddir}/.file ${xmlobjects}
+${builddir}/main/%-test.o: src/main/%.c Makefile $(wildcard src/main/*.h) ${builddir}/main/.file
 	${CC} ${TFLAGS} -c -o $@ $<
 
-${builddir}/%.o: src/%.c Makefile $(wildcard src/*.h) ${builddir}/.file ${xmlobjects}
+${builddir}/main/%.o: src/main/%.c Makefile $(wildcard src/main/*.h) ${builddir}/main/.file
 	${CC} ${FLAGS} -c -o $@ $<
 
 clean:
