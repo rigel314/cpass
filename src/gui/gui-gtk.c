@@ -187,7 +187,8 @@ static void itemBut_Click(GtkButton* button, gpointer data)
 				g_value_init(&width, G_TYPE_INT);
 				g_value_set_int(&width, 30);
 				g_object_set_property((GObject*)txt, "width-chars", &width);
-				if(json_object_object_get_ex(arrVal, "type", &desType) && !strcmp("P", json_object_get_string(desType)))
+				if((json_object_object_get_ex(arrVal, "type", &desType) && !strcmp("P", json_object_get_string(desType))) || 
+					(json_object_object_get_ex(arrVal, "designation", &desType) && !strcmp("password", json_object_get_string(desType))))
 				{
 					g_object_set_property((GObject*)txt, "visibility", &gvfalse);
 					GtkWidget* butsh = gtk_button_new_with_label("Show");
