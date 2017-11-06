@@ -1,9 +1,9 @@
 GUI = gtk
-FLAGS = -DDEBUG -ggdb3 -O0 -std=gnu11 -march=native -Wall -Wno-pointer-sign -Wno-switch -Werror
+FLAGS = -DDEBUG -ggdb3 -O0 -std=gnu11 -march=native -fno-builtin-printf -Wall -Wno-pointer-sign -Wno-switch -Werror
 TFLAGS = ${FLAGS} -DTESTS
-LFLAGS = -lsqlite3 -ljson-c -lssl -lcrypto
+LFLAGS = -lsqlite3 -ljson-c -lssl -lcrypto -lcurl
 builddir = build
-objects = ${builddir}/main/main.o ${builddir}/main/sql.o ${builddir}/main/util.o ${builddir}/main/crypt.o ${builddir}/main/1pass.o ${builddir}/main/gui.o
+objects = ${builddir}/main/main.o ${builddir}/main/sql.o ${builddir}/main/util.o ${builddir}/main/crypt.o ${builddir}/main/1pass.o ${builddir}/main/gui.o ${builddir}/main/config.o
 xmlobjects =
 ifneq (,$(findstring gtk,$(GUI)))
 	gobjects += ${builddir}/gui/gui-gtk.o

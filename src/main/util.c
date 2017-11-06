@@ -9,6 +9,12 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include <string.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <termios.h>
+#include <errno.h>
+#include <dirent.h>
+#include <curl/curl.h>
 #include "util.h"
 
 inline int base64expansion(int len)
@@ -188,6 +194,445 @@ int strnrcmp(const char* s1, const char* s2, int len)
 	}
 	
 	return 0;
+}
+
+int mkdirp(char* dir)
+{
+	char* tmp = dir;
+	if(*tmp == '/')
+		tmp++;
+//	dbgLog("%s\n", dir);
+	while(*tmp)
+	{
+		if(*tmp == '/')
+		{
+			*tmp = '\0';
+			DIR* d = opendir(dir);
+			int ret;
+			if(!d)
+				ret = mkdir(dir, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH); // 755
+			else
+				closedir(d);
+//			dbgLog("%d, %s\n", ret, dir);
+			*tmp = '/';
+			if(ret != EEXIST && ret)
+				return ret;
+		}
+		tmp++;
+	}
+	return 0;
+}
+
+static struct fileLines empty =
+{
+	.next = NULL,
+	.line = "",
+};
+
+/**
+ * read file into a linked list of lines
+ */
+struct fileLines* mkFileLines(char* file)
+{
+	FILE* fp;
+	struct fileLines* lines = NULL, *lastLn, *head = NULL;
+	int c, lastC = '\n';
+	int loc;
+	char* tmp;
+
+	fp = fopen(file, "r");
+	if(!fp)
+		return &empty;
+
+	fseek(fp, 0, SEEK_END);
+	size_t flen = ftell(fp);
+	if(!flen)
+		return &empty;
+	fseek(fp, 0, SEEK_SET);
+	
+	while((c = fgetc(fp)) != -1)
+	{
+		if(lastC == '\n')
+		{
+			lastLn = lines;
+			lines = calloc(1, sizeof(struct fileLines));
+			if(!lines)
+			{
+				freeFileLines(head);
+				return NULL;
+			}
+
+			if(lastLn)
+			{
+				lastLn->next = lines;
+				lastLn->line = realloc(lastLn->line, loc + 1);
+				if(!lastLn->line)
+				{
+					freeFileLines(head);
+					return NULL;
+				}
+				*(lastLn->line + loc) = 0;
+			}
+			else
+				head = lines;
+
+			loc = 0;
+		}
+
+		if(lines->line)
+			tmp = realloc(lines->line, loc + 1);
+		else
+			tmp = calloc(1, 1);
+		if(!tmp)
+		{
+			freeFileLines(head);
+			return NULL;
+		}
+		lines->line = tmp;
+
+		*(lines->line + loc++) = c;
+
+		lastC = c;
+	}
+	if(*(lines->line + (loc - 1)) != '\n')
+	{
+		tmp = realloc(lines->line, strlen(lines->line) + 2);
+		if(!tmp)
+		{
+			freeFileLines(head);
+			return NULL;
+		}
+		lines->line = tmp;
+		*(lines->line + loc++) = '\n';
+	}
+	else
+	{
+		tmp = realloc(lines->line, loc + 1);
+		if(!tmp)
+		{
+			freeFileLines(head);
+			return NULL;
+		}
+		lines->line = tmp;
+	}
+	*(lines->line + loc) = '\0';
+
+	fclose(fp);
+	return head;
+}
+
+void freeFileLines(struct fileLines* lines)
+{
+	if(!lines) // Passed a null pointer
+		return;
+
+	free(lines->line);
+	freeFileLines(lines->next);
+	free(lines);
+
+	return;
+}
+
+struct fileLines* freeSomeFileLines(struct fileLines* lines, char* stop)
+{
+	struct fileLines* line;
+
+	if(!lines) // Passed a null pointer
+		return NULL;
+
+	if(strcmp(lines->line, stop))
+	{
+		free(lines->line);
+		line = lines->next;
+		free(lines);
+		return freeSomeFileLines(line, stop);
+	}
+
+	return lines;
+}
+
+/**
+ * returns 0 on success
+ * inserts line immediately after lines
+ */
+int insertFileLine(struct fileLines* lines, char* new)
+{
+	struct fileLines* line;
+
+	if(!lines)
+		return 1;
+
+	line = lines->next;
+	lines->next = malloc(sizeof(struct fileLines));
+	if(!lines->next)
+	{
+		return 2;
+	}
+	lines = lines->next;
+	lines->line = calloc(strlen(new) + 1, 1);
+	if(!lines->line)
+	{
+		lines->line = "";
+		return 3;
+	}
+	strcpy(lines->line, new);
+	lines->next = line;
+
+	return 0;
+}
+
+/**
+ * returns >=0 on success, negative on fail
+ * returns input in pass, this must be free()'d by the caller
+ * displays msg
+ * hide=0 just reads stdin, any other value of hide uses termios to disable terminal echo
+ * gets one line from stdin and  replaces the newline with a null terminator
+ *
+ * Maybe I should look at sudo's tgetpass.c to make this more portable, like working in a screen or in an emacs shell, but maybe later...
+ */
+int askStr(const char* msg, char** pass, int hide)
+{
+	struct termios old, new;
+	size_t initlen = 100;
+	*pass = malloc(100);
+	if(!*pass)
+		return -1;
+	
+	if(hide)
+	{
+		int ret = tcgetattr(0, &old);
+		if(ret)
+		{
+			free(*pass);
+			return -2;
+		}
+		
+		new = old;
+		new.c_lflag &= ~ECHO;
+		ret = tcsetattr(0, TCSAFLUSH, &new);
+		if(ret)
+		{
+			free(*pass);
+			return -3;
+		}
+	}
+	
+	printf("%s", msg);
+	fflush(stdout);
+
+	int len = getline(pass, &initlen, stdin);
+	(*pass)[len-1] = '\0';
+	len--;
+	
+	if(hide)
+	{
+		tcsetattr(0, TCSAFLUSH, &old);
+		printf("\n");
+	}
+	
+	return len;
+}
+
+struct writectx
+{
+	char** data;
+	int len;
+};
+static size_t curl_write_cb(char* ptr, size_t size, size_t nmemb, void* userdata)
+{
+	struct writectx* ctx = (struct writectx*)userdata;
+	
+	char* tmp = realloc(*ctx->data, ctx->len + size*nmemb + 1);
+	if(!tmp)
+		return 0;
+	*ctx->data = tmp;
+	
+	memcpy(*ctx->data + ctx->len, ptr, size*nmemb);
+	
+	ctx->len += size*nmemb;
+	(*ctx->data)[ctx->len] = '\0';
+	
+	return size*nmemb;
+}
+struct readctx
+{
+	char* data;
+	int off;
+	int size;
+};
+static size_t curl_read_cb(char* buffer, size_t size, size_t nitems, void* userdata)
+{
+	struct readctx* ctx = (struct readctx*)userdata;
+	
+	size_t sz = min(size*nitems, ctx->size - ctx->off);
+	
+	memcpy(buffer, ctx->data + ctx->off, sz);
+	
+	ctx->off += sz;
+	
+	return 0;
+}
+/**
+ * returns positive length on success
+ * outputs text reply from server in resp, this must be free()'d by the caller
+ * req can be NULL for an empty request
+ * reqlen should be the length of the string req, if -1, strlen() will be called
+ * user should call curl_global_init before calling this
+ */
+int doCurl(char** resp, const char* url, const char* req, int reqlen, enum HTTPreqType type)
+{
+	CURL* curl = curl_easy_init();
+	if(!curl)
+	{
+		return -1;
+	}
+	
+	CURLcode res;
+	if(curl_easy_setopt(curl, CURLOPT_URL, url))
+	{
+		curl_easy_cleanup(curl);
+		return -2;
+	}
+	
+	if(type == HTTP_POST)
+	{
+		if(curl_easy_setopt(curl, CURLOPT_POST, 1L))
+		{
+			curl_easy_cleanup(curl);
+			return -3;
+		}
+	}
+	if(type == HTTP_GET)
+	{
+		if(curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L))
+		{
+			curl_easy_cleanup(curl);
+			return -4;
+		}
+	}
+	
+	if(req && reqlen < 0)
+		reqlen = strlen(req);
+	if(req && reqlen)
+	{
+		if(curl_easy_setopt(curl, CURLOPT_READFUNCTION, curl_read_cb))
+		{
+			curl_easy_cleanup(curl);
+			return -5;
+		}
+		if(curl_easy_setopt(curl, CURLOPT_READDATA, req))
+		{
+			curl_easy_cleanup(curl);
+			return -6;
+		}
+		if(curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L))
+		{
+			curl_easy_cleanup(curl);
+			return -7;
+		}
+	}
+	*resp = NULL;
+	if(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_cb))
+	{
+		curl_easy_cleanup(curl);
+		return -8;
+	}
+	struct writectx* wctx = malloc(sizeof(struct writectx));
+	if(!wctx)
+	{
+		curl_easy_cleanup(curl);
+		return -9;
+	}
+	wctx->data = resp;
+	wctx->len = 0;
+	if(curl_easy_setopt(curl, CURLOPT_WRITEDATA, wctx))
+	{
+		curl_easy_cleanup(curl);
+		return -10;
+	}
+	
+	res = curl_easy_perform(curl);
+	if(res != 0)
+	{
+		curl_easy_cleanup(curl);
+		free(*resp);
+		*resp = NULL;
+		return -11;
+	}
+	
+	curl_easy_cleanup(curl);
+	
+	return wctx->len;
+}
+
+///**
+// * returns 0 on success
+// * when successful, caller must free *out
+// * finds ${whatever} is strings and replaces with the value of the environment variable called whatever
+// * for a literal "$" to be preserved, you must enter as "${}"
+// */
+//int envexpand(const char* in, char** out)
+//{
+//	int addedLen = 0;
+//	int removedLen = 0;
+//	int initLen = strlen(in);
+//	char tmp[initLen];
+//
+//	// State machine to parse the input
+//	int varFound = 0;
+//	int varLen = 0;
+//	for(int i = 0; i < initLen; i++)
+//	{
+//		if(varFound && in[i] == '}')
+//		{
+//			varFound = 0;
+//			tmp[varLen] = '\0';
+//		}
+//		if(varFound)
+//		{
+//			tmp[varLen++] = in[i];
+//		}
+//		if(!varFound && in[i] == '$')
+//		{
+//			varFound = 1;
+//			varLen = 0;
+//		}
+//	}
+//
+//	return 0;
+//}
+
+void tolcase(char* str, int len)
+{
+	for(int i = 0; i < len; i++)
+	{
+		if(*str >= 'A' && *str <= 'Z')
+		{
+			*str |= 0x20; // ASCII shift bit
+		}
+		str++;
+	}
+	return;
+}
+
+/**
+ * str "bang' chr nul
+ * acts like chrstrnull, but finds the first char that isn't c
+ */
+char* strbchrnul(char* str, int c)
+{
+	while(*str && *str == c)
+		str++;
+	return str;
+}
+
+void dumpBN(char* msg, BIGNUM* bn)
+{
+	char tmp[10000];
+	
+	BN_bn2bin(bn, tmp);
+	
+	hexdump(msg, tmp, BN_num_bytes(bn));
 }
 
 void dump(const char* message, const char* data, int len, char* format, int rowSize, char* whiteSpace)

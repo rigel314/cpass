@@ -28,5 +28,6 @@ int addKey(struct keys** keylist, const char* uuid, char* key, enum keyType type
 int getKeyByUUID(char** out, const char* uuid);
 int decryptItem(char** ptJSON, char* ctJSON);
 void printUUIDs(struct keys** keylist);
+int genClientUUID(char** out);
 
 #endif /* SRC_1PASS_H_ */

@@ -14,6 +14,7 @@
 #include "crypt.h"
 #include "sql.h"
 #include "gui.h"
+#include "config.h"
 
 struct keys* keys = NULL;
 
@@ -220,7 +221,9 @@ int getKeyByUUID(char** out, const char* uuid)
 		if(pass)
 		{
 			char km[32];
-			masterKey(km, pass, accountKey+8, email, id);
+			struct mkSalt* kms = getMUKsalt();
+			masterKey(km, pass, accountKey+8, email, id, *kms);
+			freeMUKsalt(kms);
 			OPENSSL_cleanse(pass, strlen(pass));
 			free(pass);
 			addKey(&keys, uuid, km, KT_aes, out);
@@ -295,4 +298,38 @@ int getKeyByUUID(char** out, const char* uuid)
 int decryptItem(char** ptJSON, char* ctJSON)
 {
 	return decryptKey(ptJSON, ctJSON);
+}
+
+int getClientUUID(char** out)
+{
+	return getConfigStr(CNF_VAR_clientUUID, out, CNF_DEF_FILE);
+}
+
+/**
+ * returns 0 on success
+ * caller must free *out
+ */
+int genClientUUID(char** out)
+{
+	char* ret = malloc(27);
+	if(!ret)
+		return 1;
+	
+	FILE* fp = fopen("/dev/urandom", "r");
+	fread(ret, 26, 1, fp);
+	fclose(fp);
+	for(int i = 0; i < 26; i++)
+	{
+		ret[i] = ((unsigned char)ret[i]) % 36;
+		if(ret[i] < 26)
+			ret[i] = ret[i] + 'a';
+		else
+			ret[i] = ret[i] - 26 + '0';
+	}
+	
+	ret[26] = '\0';
+	
+	*out = ret;
+	
+	return 0;
 }

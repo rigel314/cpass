@@ -14,11 +14,16 @@
 #include <openssl/crypto.h>
 #include "gui.h"
 
-// TODO: Add some kind of UI
-// TODO: Connect to browser extension
-// TODO: check json tokener parsing
-// TODO: check json_object_object_get_ex() calls for failure
+// TODO: Connect to browser extension.
+// TODO: check json tokener parsing.
+// TODO: check json_object_object_get_ex() calls for failure.
 // TODO: add openssl_cleanse() functions after every place decrypted data is done. And when password is entered.
+// TODO: Connect to server for sync.
+// TODO: make tests for config files.
+// TODO: refactor various functions to be consistent with passing outputs first.
+// TODO: add const keywords where it makes sense.
+// TODO: check outputs from BIGNUM functions.
+// TODO: make test for strbchrnul()
 
 char accountKey[100] = ""; // get from user
 char email[] = "pi.rubiks@gmail.com"; // get from user
@@ -87,6 +92,7 @@ int main()
 	ret += testBase64();
 	ret += testStrnrcmp();
 	ret += testMasterKey();
+	ret += testSessKey();
 	printf("%d tests failed\n", ret);
 	return ret;
 }

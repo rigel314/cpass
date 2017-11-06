@@ -35,8 +35,16 @@ int openDB(char* file)
 	return 0;
 }
 
-int getMUKsalt(char** p2s, char** alg, int* p2c)
+struct mkSalt* getMUKsalt()
 {
+	struct mkSalt* mks = malloc(sizeof(struct mkSalt));
+	if(!mks)
+		return NULL;
+	
+	char** p2s = &mks->salt;
+	char** alg = &mks->alg;
+	int* p2c = &mks->count;
+	
 //	#define TESTS
 	#ifdef TESTS
 		*alg = malloc(100);
@@ -44,7 +52,7 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 		*p2c = 100000;
 		strcpy(*alg, "PBES2g-HS256");
 		strcpy(*p2s, "1234567890123456789012");
-		return 1;
+		return mks;
 	#endif
 	
 	// SELECT enc_sym_key FROM keysets WHERE encrypted_by = mp ORDER BY updated_at DESC LIMIT 1
@@ -61,7 +69,8 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	if(retval != SQLITE_OK)
 	{
 		dbgLog("sqlite3_prepare_v2() error: %d\n", retval);
-		return 0;
+		free(mks);
+		return NULL;
 	}
 
 	retval = sqlite3_bind_text(query, 1, "mp", -1, SQLITE_STATIC);
@@ -77,7 +86,8 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	{
 		dbgLog("sqlite3_step() error: %d\n", retval);
 		sqlite3_finalize(query);
-		return 0;
+		free(mks);
+		return NULL;
 	}
 
 	const char* enc_sym_key = (const char*) sqlite3_column_text(query, 0);
@@ -91,7 +101,8 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	{
 		json_object_put(jobj);
 		sqlite3_finalize(query);
-		return 0;
+		free(mks);
+		return NULL;
 	}
 	memcpy(*p2s, json_object_get_string(val), size);
 	(*p2s)[size] = '\0';
@@ -104,7 +115,8 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 		free(*p2s);
 		json_object_put(jobj);
 		sqlite3_finalize(query);
-		return 0;
+		free(mks);
+		return NULL;
 	}
 	memcpy(*alg, json_object_get_string(val), size);
 	(*alg)[size] = '\0';
@@ -116,7 +128,16 @@ int getMUKsalt(char** p2s, char** alg, int* p2c)
 	
 	sqlite3_finalize(query);
 	
-	return 1;
+	return mks;
+}
+
+int freeMUKsalt(struct mkSalt* mks)
+{
+	free(mks->alg);
+	free(mks->salt);
+	free(mks);
+	
+	return 0;
 }
 
 int findKid(char** ctJSON, const char* uuid)
